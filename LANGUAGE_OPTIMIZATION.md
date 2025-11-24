@@ -19,12 +19,12 @@ This document describes the language support and performance optimizations imple
 
 **Languages Supported:**
 
-#### No Capitalization Support (25+ languages):
+#### No Capitalization Support (24+ languages):
 - Chinese (zh), Korean (ko), Japanese (ja), Thai (th)
 - Hindi (hi), Bengali (bn), Tamil (ta), Telugu (te), Kannada (kn), Malayalam (ml)
 - Gujarati (gu), Marathi (mr), Punjabi (pa), Urdu (ur), Sinhala (si)
 - Khmer (km), Lao (lo), Burmese (my), Tibetan (bo), Dzongkha (dz)
-- Javanese (jv), Sundanese (su), Amharic (am), Tigrinya (ti), Hebrew (he)
+- Javanese (jv), Sundanese (su), Amharic (am), Tigrinya (ti)
 
 #### No Auto-Space Support (9+ languages):
 - Chinese (zh), Japanese (ja), Korean (ko)
@@ -32,7 +32,7 @@ This document describes the language support and performance optimizations imple
 - Burmese (my), Tibetan (bo), Dzongkha (dz)
 
 **Benefits:**
-- **5x increase** in explicitly supported languages for capitalization (5 → 25+)
+- **5x increase** in explicitly supported languages for capitalization (5 → 24+)
 - **2x increase** in explicitly supported languages for auto-space (4 → 9)
 - **Performance improvement** through caching mechanism
 - **Scalability** - Easy to add more languages without modifying multiple files

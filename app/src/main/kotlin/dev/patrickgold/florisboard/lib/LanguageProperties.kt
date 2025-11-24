@@ -43,7 +43,8 @@ internal object LanguagePropertiesDatabase {
     // Languages that do not support capitalization
     // Includes: Chinese, Korean, Thai, Japanese, Hindi, Bengali, Tamil, Telugu, Kannada, 
     // Malayalam, Gujarati, Marathi, Punjabi, Urdu, Sinhala, Khmer, Lao, Burmese, Tibetan,
-    // Dzongkha, Javanese, and various other Asian scripts
+    // Dzongkha, Javanese, Sundanese, Amharic, Tigrinya, and various other scripts without
+    // uppercase/lowercase distinction
     private val NO_CAPITALIZATION_LANGUAGES = setOf(
         "zh", // Chinese
         "ko", // Korean
@@ -67,7 +68,7 @@ internal object LanguagePropertiesDatabase {
         "dz", // Dzongkha
         "jv", // Javanese
         "su", // Sundanese
-        "am", // Amharic (uses own case system, but not Latin-style)
+        "am", // Amharic (Ge'ez script has no uppercase/lowercase distinction)
         "ti", // Tigrinya
     )
     
