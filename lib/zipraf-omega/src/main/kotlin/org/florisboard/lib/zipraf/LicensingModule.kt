@@ -55,7 +55,12 @@ data class LicensingModule(
         // Correlation constant from specification
         const val R_CORR = 0.963999
         
-        // Symbolic frequencies (Hz/kHz)
+        // Symbolic frequencies for resonance and validation
+        // Values represent specific vibrational states in the ZIPRAF_OMEGA system:
+        // - 100 Hz: Base frequency
+        // - 144 kHz: Primary resonance
+        // - 288 kHz: Harmonic resonance (2x primary)
+        // - 1008 Hz: Validation frequency
         val FREQUENCIES = listOf(100, 144_000, 288_000, 1008)
     }
     

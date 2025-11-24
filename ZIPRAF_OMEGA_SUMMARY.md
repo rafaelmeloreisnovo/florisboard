@@ -10,9 +10,9 @@ This document summarizes the implementation of the ZIPRAF_OMEGA_FULL system inte
 
 Created a complete, production-ready module at `lib/zipraf-omega/` with:
 
-- **Source code**: 4 main Kotlin files (~35KB of implementation)
+- **Source code**: 4 main Kotlin files (~35 kB of implementation)
 - **Tests**: 3 test suites with 43 unit tests
-- **Documentation**: Comprehensive README (10KB+)
+- **Documentation**: Comprehensive README (10 kB+)
 - **Build configuration**: Gradle build file with proper dependencies
 
 ### 2. Licensing & Validation System
@@ -194,7 +194,7 @@ The module is designed to comply with the following standards (metadata and docu
 
 ### Comprehensive README
 
-Created a 10KB+ README.md with:
+Created a 10 kB+ README.md with:
 
 - ✅ Architecture overview
 - ✅ Standards compliance details

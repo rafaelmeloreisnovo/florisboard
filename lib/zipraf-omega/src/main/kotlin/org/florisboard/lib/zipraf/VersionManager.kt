@@ -34,6 +34,11 @@ class VersionManager {
         
         // Minimum compatible version
         val MIN_COMPATIBLE_VERSION = SemanticVersion(1, 0, 0)
+        
+        // Risk calculation weights
+        private const val MAJOR_RISK_WEIGHT = 0.5
+        private const val MINOR_RISK_WEIGHT = 0.3
+        private const val PATCH_RISK_WEIGHT = 0.1
     }
     
     /**
@@ -112,6 +117,11 @@ class VersionManager {
     /**
      * Calculates migration risk level
      * 
+     * Risk is calculated based on weighted version component differences:
+     * - Major version changes: 50% weight (highest risk)
+     * - Minor version changes: 30% weight (moderate risk)
+     * - Patch version changes: 10% weight (lowest risk)
+     * 
      * @param from Source version
      * @param to Target version
      * @return Risk level (0.0 = no risk, 1.0 = high risk)
@@ -121,8 +131,10 @@ class VersionManager {
         val minorDiff = kotlin.math.abs(to.minor - from.minor)
         val patchDiff = kotlin.math.abs(to.patch - from.patch)
         
-        // Major version changes are highest risk
-        return (majorDiff * 0.5 + minorDiff * 0.3 + patchDiff * 0.1)
+        // Calculate weighted risk based on version component differences
+        return (majorDiff * MAJOR_RISK_WEIGHT + 
+                minorDiff * MINOR_RISK_WEIGHT + 
+                patchDiff * PATCH_RISK_WEIGHT)
             .coerceIn(0.0, 1.0)
     }
 }
