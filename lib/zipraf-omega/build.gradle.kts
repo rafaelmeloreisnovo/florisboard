@@ -14,18 +14,33 @@
  * limitations under the License.
  */
 
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
-kotlin {
-    jvmToolchain(17)
+tasks {
+    compileKotlin {
+        compilerOptions.jvmTarget = JvmTarget.JVM_11
+    }
+    compileTestKotlin {
+        compilerOptions.jvmTarget = JvmTarget.JVM_11
+    }
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+    }
+    useJUnitPlatform()
 }
 
 dependencies {

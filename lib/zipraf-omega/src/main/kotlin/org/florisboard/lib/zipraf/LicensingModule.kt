@@ -87,27 +87,35 @@ data class LicensingModule(
     }
     
     /**
-     * Computes SHA3-512 hash for integrity verification
+     * Computes cryptographic hash for integrity verification
      * 
-     * Note: This is a simplified implementation. Full production use
-     * would require additional cryptographic library support for BLAKE3.
+     * Priority order:
+     * 1. SHA3-512 (if available)
+     * 2. SHA-256 (fallback, always available)
+     * 
+     * Note: BLAKE3 support requires external library (org.bouncycastle:bcprov-jdk15on
+     * or similar). This can be added as an optional dependency when needed.
      * 
      * @param data Input data to hash
      * @return Hexadecimal string representation of hash
+     * @throws RuntimeException if neither SHA3-512 nor SHA-256 are available (extremely rare)
      */
     fun computeHash(data: ByteArray): String {
-        // SHA3-512 implementation
-        // Note: Android/JVM may require additional library for SHA3
-        // This provides fallback to SHA-256 which is widely available
         return try {
+            // Try SHA3-512 first (preferred algorithm)
             val digest = MessageDigest.getInstance("SHA3-512")
             val hash = digest.digest(data)
             hash.joinToString("") { "%02x".format(it) }
-        } catch (e: Exception) {
-            // Fallback to SHA-256 if SHA3 not available
-            val digest = MessageDigest.getInstance("SHA-256")
-            val hash = digest.digest(data)
-            hash.joinToString("") { "%02x".format(it) }
+        } catch (e: java.security.NoSuchAlgorithmException) {
+            try {
+                // Fallback to SHA-256 (always available in standard JVM/Android)
+                val digest = MessageDigest.getInstance("SHA-256")
+                val hash = digest.digest(data)
+                hash.joinToString("") { "%02x".format(it) }
+            } catch (e2: java.security.NoSuchAlgorithmException) {
+                // This should never happen as SHA-256 is always available
+                throw RuntimeException("No suitable hash algorithm available", e2)
+            }
         }
     }
     

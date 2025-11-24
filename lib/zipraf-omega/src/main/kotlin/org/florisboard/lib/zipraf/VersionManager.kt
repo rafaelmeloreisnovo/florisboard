@@ -159,20 +159,30 @@ data class SemanticVersion(
     
     companion object {
         /**
-         * Parses version string
+         * Parses version string in semantic versioning format
          * 
          * @param version Version string (e.g., "1.2.3")
          * @return Parsed version
+         * @throws IllegalArgumentException if version format is invalid
+         * @throws NumberFormatException if version components are not valid integers
          */
         fun parse(version: String): SemanticVersion {
             val parts = version.split(".")
-            require(parts.size == 3) { "Invalid version format: $version" }
+            require(parts.size == 3) { "Invalid version format: $version (expected major.minor.patch)" }
             
-            return SemanticVersion(
-                major = parts[0].toInt(),
-                minor = parts[1].toInt(),
-                patch = parts[2].toInt()
-            )
+            // Validate each part is a valid non-negative integer
+            val major = parts[0].toIntOrNull()
+                ?: throw NumberFormatException("Invalid major version: ${parts[0]}")
+            val minor = parts[1].toIntOrNull()
+                ?: throw NumberFormatException("Invalid minor version: ${parts[1]}")
+            val patch = parts[2].toIntOrNull()
+                ?: throw NumberFormatException("Invalid patch version: ${parts[2]}")
+            
+            require(major >= 0 && minor >= 0 && patch >= 0) {
+                "Version components must be non-negative: $version"
+            }
+            
+            return SemanticVersion(major, minor, patch)
         }
     }
 }

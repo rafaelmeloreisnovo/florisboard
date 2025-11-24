@@ -305,33 +305,38 @@ class MatrixPool {
 
 /**
  * Queue optimizer for reducing latency
- * Implements lock-free operations where possible
+ * Uses concurrent data structures for lock-free operations
+ * 
+ * Note: This uses java.util.concurrent.ConcurrentLinkedQueue for
+ * better performance in high-concurrency scenarios. For single-threaded
+ * use cases, ArrayDeque with synchronization may be more efficient.
  */
 class QueueOptimizer<T> {
-    // Use ConcurrentHashMap for lock-free operations
-    private val queue = ArrayDeque<T>()
-    private val lock = Any()
+    // Use ConcurrentLinkedQueue for lock-free operations
+    private val queue = java.util.concurrent.ConcurrentLinkedQueue<T>()
+    private val sizeCounter = java.util.concurrent.atomic.AtomicInteger(0)
     
     /**
-     * Enqueues item with batching support
+     * Enqueues item with lock-free operation
      * 
      * @param item Item to enqueue
      */
     fun enqueue(item: T) {
-        synchronized(lock) {
-            queue.addLast(item)
-        }
+        queue.offer(item)
+        sizeCounter.incrementAndGet()
     }
     
     /**
-     * Dequeues item
+     * Dequeues item with lock-free operation
      * 
      * @return Item or null if empty
      */
     fun dequeue(): T? {
-        synchronized(lock) {
-            return if (queue.isNotEmpty()) queue.removeFirst() else null
+        val item = queue.poll()
+        if (item != null) {
+            sizeCounter.decrementAndGet()
         }
+        return item
     }
     
     /**
@@ -341,36 +346,32 @@ class QueueOptimizer<T> {
      * @return List of dequeued items
      */
     fun dequeueBatch(maxItems: Int): List<T> {
-        synchronized(lock) {
-            val result = mutableListOf<T>()
-            var count = 0
-            while (queue.isNotEmpty() && count < maxItems) {
-                result.add(queue.removeFirst())
-                count++
-            }
-            return result
+        val result = mutableListOf<T>()
+        var count = 0
+        while (count < maxItems) {
+            val item = queue.poll() ?: break
+            result.add(item)
+            sizeCounter.decrementAndGet()
+            count++
         }
+        return result
     }
     
     /**
-     * Gets queue size
+     * Gets queue size (approximate for concurrent access)
      * 
-     * @return Current size
+     * @return Current size (may be approximate due to concurrent modifications)
      */
     fun size(): Int {
-        synchronized(lock) {
-            return queue.size
-        }
+        return sizeCounter.get()
     }
     
     /**
      * Checks if queue is empty
      * 
-     * @return true if empty
+     * @return true if empty (may change immediately due to concurrent access)
      */
     fun isEmpty(): Boolean {
-        synchronized(lock) {
-            return queue.isEmpty()
-        }
+        return queue.isEmpty()
     }
 }

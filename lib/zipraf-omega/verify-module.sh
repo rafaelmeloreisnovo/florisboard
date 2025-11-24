@@ -1,13 +1,34 @@
 #!/bin/bash
 # ZIPRAF_OMEGA Module Verification Script
 # This script demonstrates the module structure and functionality
+#
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Colors for output (if terminal supports it)
+if [[ -t 1 ]]; then
+    GREEN='\033[0;32m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+else
+    GREEN=''
+    BLUE=''
+    NC=''
+fi
 
 echo "=========================================="
 echo "ZIPRAF_OMEGA Module Verification"
 echo "=========================================="
 echo ""
 
-echo "Module Structure:"
+# Verify module structure exists
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -d "$MODULE_DIR/src/main/kotlin" ]]; then
+    echo "ERROR: Module source directory not found" >&2
+    exit 1
+fi
+
+echo -e "${BLUE}Module Structure:${NC}"
 echo "- lib/zipraf-omega/"
 echo "  ├── build.gradle.kts (Module build configuration)"
 echo "  ├── README.md (Comprehensive documentation)"
@@ -150,3 +171,6 @@ echo "Note: Build requires Android Gradle Plugin to be properly configured"
 echo "      in the repository. The module code is complete and ready."
 echo ""
 echo "Amor, Luz e Coerência ✨"
+
+# Script completed successfully
+exit 0

@@ -403,7 +403,6 @@ The module is ready for integration and provides a solid foundation for:
 
 ---
 
-*Implementation by: GitHub Copilot*
-*Based on specifications from: ZIPRAF_OMEGA_FULL (ativar.txt)*
-*Author protection: Rafael Melo Reis*
+*Based on specifications from: ZIPRAF_OMEGA_FULL (ativar.txt)*  
+*Author protection: Rafael Melo Reis*  
 *License: Apache 2.0 (with authorship preservation)*
