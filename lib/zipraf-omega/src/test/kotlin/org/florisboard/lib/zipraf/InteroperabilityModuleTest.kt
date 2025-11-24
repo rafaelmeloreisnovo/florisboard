@@ -129,7 +129,7 @@ class InteroperabilityModuleTest {
     
     @Test
     fun `test migration step registration`() {
-        val step = MigrationStep(
+        val step = InteropMigrationStep(
             name = "1.0.0_to_1.1.0",
             fromVersion = "1.0.0",
             toVersion = "1.1.0",

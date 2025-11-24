@@ -7,6 +7,7 @@ package org.florisboard.lib.zipraf
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
@@ -178,7 +179,7 @@ class RiskMitigationModuleTest {
     @Test
     fun `test risk event emission`() = runTest {
         // Start collecting events
-        val eventJob = kotlinx.coroutines.launch {
+        val eventJob = launch {
             val event = module.riskEvents.first()
             assertNotNull(event)
             assertEquals(RiskType.LATENCY.name, event.riskType)
