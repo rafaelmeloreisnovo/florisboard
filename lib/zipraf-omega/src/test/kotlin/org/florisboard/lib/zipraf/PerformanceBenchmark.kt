@@ -239,7 +239,7 @@ class PerformanceBenchmark {
         loop.start(
             scope = this,
             cycleDelayMs = 0, // No delay for max throughput
-            onCycle = { _ -> cycleCount++ } // Properly receive LoopCycleResult parameter
+            onCycle = { _ -> cycleCount++ } // Ignore LoopCycleResult, only count cycles
         )
         
         kotlinx.coroutines.delay(durationMs)

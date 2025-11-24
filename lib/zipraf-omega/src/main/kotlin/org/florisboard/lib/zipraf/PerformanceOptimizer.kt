@@ -48,10 +48,16 @@ class PerformanceOptimizer {
     private val cacheMisses = AtomicLong(0)
     
     // Cache with automatic eviction (weak references)
+    // Note: Using ConcurrentHashMap which doesn't guarantee insertion order
+    // This provides approximate LRU behavior through periodic cleanup
     private val cache = ConcurrentHashMap<String, WeakReference<Any>>()
     
     // Maximum cache entries before cleanup (prevents unbounded growth)
     private val maxCacheSize = 1000
+    
+    // Track when last cleanup occurred to avoid excessive cleanup operations
+    private val lastCleanupTime = AtomicLong(System.currentTimeMillis())
+    private val cleanupIntervalMs = 10000L // Cleanup at most every 10 seconds
     
     // Matrix pool for reuse (reduces allocations)
     private val matrixPool = MatrixPool()
@@ -59,6 +65,9 @@ class PerformanceOptimizer {
     /**
      * Gets cached value or computes if not present
      * Uses weak references to allow GC when memory is needed
+     * 
+     * Note: Cache eviction uses approximate LRU (due to ConcurrentHashMap's
+     * unordered iteration). For true LRU, consider LinkedHashMap with synchronization.
      * 
      * @param key Cache key
      * @param compute Function to compute value if not cached
@@ -79,19 +88,54 @@ class PerformanceOptimizer {
         val value = compute()
         
         // Check cache size and cleanup if needed
+        // Use time-based throttling to avoid expensive cleanup on every insertion
         if (cache.size >= maxCacheSize) {
-            // Remove stale entries (those with collected weak references)
-            cache.entries.removeIf { it.value.get() == null }
+            val now = System.currentTimeMillis()
+            val lastCleanup = lastCleanupTime.get()
             
-            // If still over limit, remove oldest entries (simple LRU approximation)
-            if (cache.size >= maxCacheSize) {
-                val toRemove = cache.size - maxCacheSize + 1
-                cache.keys.take(toRemove).forEach { cache.remove(it) }
+            // Only cleanup if enough time has passed or cache is significantly over limit
+            if (now - lastCleanup > cleanupIntervalMs || cache.size > maxCacheSize * 1.2) {
+                if (lastCleanupTime.compareAndSet(lastCleanup, now)) {
+                    performCacheCleanup()
+                }
             }
         }
         
         cache[key] = WeakReference(value)
         return value
+    }
+    
+    /**
+     * Performs cache cleanup by removing stale entries and excess entries
+     * This is a separate method to allow throttling of expensive cleanup operations
+     */
+    private fun performCacheCleanup() {
+        // First, remove stale entries (those with collected weak references)
+        // This is done in batches to reduce overhead
+        val iterator = cache.entries.iterator()
+        var removed = 0
+        while (iterator.hasNext() && removed < maxCacheSize / 4) {
+            val entry = iterator.next()
+            if (entry.value.get() == null) {
+                iterator.remove()
+                removed++
+            }
+        }
+        
+        // If still over limit, remove excess entries
+        // Note: This is approximate LRU since ConcurrentHashMap doesn't maintain order
+        // For production use with strict LRU requirements, consider LinkedHashMap with locks
+        // or a dedicated LRU cache implementation
+        if (cache.size > maxCacheSize) {
+            val toRemove = cache.size - maxCacheSize
+            var count = 0
+            val keysIterator = cache.keys.iterator()
+            while (keysIterator.hasNext() && count < toRemove) {
+                keysIterator.next()
+                keysIterator.remove()
+                count++
+            }
+        }
     }
     
     /**
