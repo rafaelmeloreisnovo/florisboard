@@ -114,18 +114,19 @@ class PerformanceOptimizer {
      * This is a separate method to allow throttling of expensive cleanup operations
      */
     private fun performCacheCleanup() {
-        // First, remove stale entries (those with collected weak references)
-        // This is done in batches to reduce overhead
-        val iterator = cache.entries.iterator()
-        var removed = 0
-        val maxRemoval = maxCacheSize / cleanupBatchSizeFraction
-        while (iterator.hasNext() && removed < maxRemoval) {
-            val entry = iterator.next()
+        // Collect stale keys first to avoid issues with concurrent modification
+        val staleKeys = mutableListOf<String>()
+        for (entry in cache.entries) {
             if (entry.value.get() == null) {
-                iterator.remove()
-                removed++
+                staleKeys.add(entry.key)
+                if (staleKeys.size >= maxCacheSize / cleanupBatchSizeFraction) {
+                    break // Limit batch size for performance
+                }
             }
         }
+        
+        // Remove collected stale entries
+        staleKeys.forEach { cache.remove(it) }
         
         // If still over limit, remove excess entries
         // Note: This is approximate LRU since ConcurrentHashMap doesn't maintain order
@@ -351,11 +352,13 @@ class MatrixPool {
         
         synchronized(pool) {
             // Only keep up to maxPoolSize matrices
-            // Check actual pool size to avoid counter drift
-            if (pool.size < maxPoolSize) {
+            // Check actual pool size to avoid race conditions
+            val currentSize = pool.size
+            if (currentSize < maxPoolSize) {
                 matrix.reset()
                 pool.addLast(matrix)
-                counter.set(pool.size)
+                // Update counter atomically after successful addition
+                counter.set(currentSize + 1)
             }
         }
     }
