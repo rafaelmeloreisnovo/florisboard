@@ -402,7 +402,7 @@ fun logMemoryUsage() {
 ### Profiling Tools
 
 1. **Android Profiler**: CPU, Memory, Network, Energy profiling
-2. **Systrace**: System-level performance analysis
+2. **Perfetto**: Modern system-level performance tracing (replaces Systrace)
 3. **Layout Inspector**: UI hierarchy analysis
 4. **LeakCanary**: Memory leak detection
 5. **StrictMode**: Runtime policy violations detection

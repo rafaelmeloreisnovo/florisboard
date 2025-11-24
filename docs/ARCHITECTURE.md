@@ -27,24 +27,24 @@ florisboard/
 ### Package Structure
 
 ```kotlin
-org.florisboard.
-├── app/                    # Application layer
-│   ├── ui/                # User interface
-│   ├── setup/             # Setup wizard
-│   └── settings/          # Settings screens
-├── ime/                    # Input method engine
-│   ├── core/              # Core IME functionality
-│   ├── keyboard/          # Keyboard layouts
-│   ├── text/              # Text processing
-│   ├── nlp/               # Natural language processing
-│   ├── clipboard/         # Clipboard management
-│   ├── theme/             # Theming system
-│   └── extension/         # Extension system
-└── lib/                    # Shared utilities
-    ├── android/           # Android extensions
-    ├── io/                # I/O operations
-    ├── cache/             # Caching
-    └── util/              # General utilities
+org.florisboard
+├── app                     # Application layer
+│   ├── ui                 # User interface
+│   ├── setup              # Setup wizard
+│   └── settings           # Settings screens
+├── ime                     # Input method engine
+│   ├── core               # Core IME functionality
+│   ├── keyboard           # Keyboard layouts
+│   ├── text               # Text processing
+│   ├── nlp                # Natural language processing
+│   ├── clipboard          # Clipboard management
+│   ├── theme              # Theming system
+│   └── extension          # Extension system
+└── lib                     # Shared utilities
+    ├── android            # Android extensions
+    ├── io                 # I/O operations
+    ├── cache              # Caching
+    └── util               # General utilities
 ```
 
 ## Architectural Patterns
