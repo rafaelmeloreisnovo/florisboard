@@ -55,6 +55,10 @@ class PerformanceOptimizer {
     // Maximum cache entries before cleanup (prevents unbounded growth)
     private val maxCacheSize = 1000
     
+    // Cache cleanup configuration
+    private val cacheOverflowThreshold = 1.2 // Trigger cleanup when 20% over limit
+    private val cleanupBatchSizeFraction = 4 // Remove up to 1/4 of max size in stale entries
+    
     // Track when last cleanup occurred to avoid excessive cleanup operations
     private val lastCleanupTime = AtomicLong(System.currentTimeMillis())
     private val cleanupIntervalMs = 10000L // Cleanup at most every 10 seconds
@@ -94,7 +98,7 @@ class PerformanceOptimizer {
             val lastCleanup = lastCleanupTime.get()
             
             // Only cleanup if enough time has passed or cache is significantly over limit
-            if (now - lastCleanup > cleanupIntervalMs || cache.size > maxCacheSize * 1.2) {
+            if (now - lastCleanup > cleanupIntervalMs || cache.size > maxCacheSize * cacheOverflowThreshold) {
                 if (lastCleanupTime.compareAndSet(lastCleanup, now)) {
                     performCacheCleanup()
                 }
@@ -114,7 +118,8 @@ class PerformanceOptimizer {
         // This is done in batches to reduce overhead
         val iterator = cache.entries.iterator()
         var removed = 0
-        while (iterator.hasNext() && removed < maxCacheSize / 4) {
+        val maxRemoval = maxCacheSize / cleanupBatchSizeFraction
+        while (iterator.hasNext() && removed < maxRemoval) {
             val entry = iterator.next()
             if (entry.value.get() == null) {
                 iterator.remove()

@@ -31,6 +31,11 @@ import kotlin.system.measureNanoTime
  */
 class PerformanceBenchmark {
     
+    // Benchmark configuration constants
+    companion object {
+        private const val MAX_MEMORY_FOOTPRINT_BYTES = 2048 // 2KB per operation target
+    }
+    
     private lateinit var licensing: LicensingModule
     private lateinit var optimizer: PerformanceOptimizer
     private lateinit var loop: OperationalLoop
@@ -331,15 +336,16 @@ class PerformanceBenchmark {
             assert(contexts.isNotEmpty())
         }
         
-        // Use median to reduce variance
-        val usedBytes = measurements.sorted()[measurements.size / 2]
+        // Use median to reduce variance (efficient median calculation)
+        val sortedMeasurements = measurements.sorted()
+        val usedBytes = sortedMeasurements[sortedMeasurements.size / 2]
         val bytesPerOp = usedBytes / iterations
         
         println("Memory footprint (median): ${usedBytes / 1024} KB total, ${bytesPerOp} bytes/operation")
         
         // Conservative target - actual footprint varies by JVM
-        assert(bytesPerOp < 2048) {
-            "Memory footprint too large: ${bytesPerOp} bytes/op (target: <2KB, note: varies by JVM)"
+        assert(bytesPerOp < MAX_MEMORY_FOOTPRINT_BYTES) {
+            "Memory footprint too large: ${bytesPerOp} bytes/op (target: <${MAX_MEMORY_FOOTPRINT_BYTES}, note: varies by JVM)"
         }
     }
 }
