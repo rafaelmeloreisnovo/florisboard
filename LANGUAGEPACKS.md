@@ -7,7 +7,7 @@
 
 ## Summary
 
-FlorisBoard supports internationalization through Crowdin, a community-driven translation platform. The project now supports approximately **120 languages**, allowing users from around the world to use FlorisBoard in their native language.
+FlorisBoard supports internationalization through Crowdin, a community-driven translation platform. The project now supports **over 120 languages** (125 distinct languages with 29 additional regional variants, totaling 154 language configurations), allowing users from around the world to use FlorisBoard in their native language.
 
 ### Supported Languages
 
