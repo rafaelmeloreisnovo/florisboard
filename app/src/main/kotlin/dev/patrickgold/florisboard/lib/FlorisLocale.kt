@@ -165,7 +165,7 @@ class FlorisLocale private constructor(val base: Locale) {
             val languageCodes = locales.map { it.language }
             val propertiesMap = LanguagePropertiesDatabase.getBatchProperties(languageCodes)
             return locales.associateWith { locale ->
-                propertiesMap[locale.language] ?: LanguageProperties(true, true)
+                propertiesMap[locale.language] ?: LanguagePropertiesDatabase.DEFAULT_PROPERTIES
             }
         }
     }

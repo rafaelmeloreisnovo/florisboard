@@ -35,7 +35,7 @@ internal object LanguagePropertiesDatabase {
     private val cache = mutableMapOf<String, LanguageProperties>()
     
     // Default properties for unknown languages
-    private val DEFAULT_PROPERTIES = LanguageProperties(
+    internal val DEFAULT_PROPERTIES = LanguageProperties(
         supportsCapitalization = true,
         supportsAutoSpace = true
     )
@@ -69,7 +69,6 @@ internal object LanguagePropertiesDatabase {
         "su", // Sundanese
         "am", // Amharic (uses own case system, but not Latin-style)
         "ti", // Tigrinya
-        "he", // Hebrew (modern Hebrew uses some capitalization, but traditionally doesn't)
     )
     
     // Languages that do not require spaces between words
@@ -123,7 +122,9 @@ internal object LanguagePropertiesDatabase {
     
     /**
      * Clears the internal cache. Useful for testing or memory management.
+     * This method is intended for testing purposes.
      */
+    @Suppress("unused") // Used in tests
     internal fun clearCache() {
         cache.clear()
     }
