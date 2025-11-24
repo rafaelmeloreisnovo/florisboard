@@ -50,6 +50,9 @@ class PerformanceOptimizer {
     // Cache with automatic eviction (weak references)
     private val cache = ConcurrentHashMap<String, WeakReference<Any>>()
     
+    // Maximum cache entries before cleanup (prevents unbounded growth)
+    private val maxCacheSize = 1000
+    
     // Matrix pool for reuse (reduces allocations)
     private val matrixPool = MatrixPool()
     
@@ -74,6 +77,19 @@ class PerformanceOptimizer {
         // Cache miss - compute and store
         cacheMisses.incrementAndGet()
         val value = compute()
+        
+        // Check cache size and cleanup if needed
+        if (cache.size >= maxCacheSize) {
+            // Remove stale entries (those with collected weak references)
+            cache.entries.removeIf { it.value.get() == null }
+            
+            // If still over limit, remove oldest entries (simple LRU approximation)
+            if (cache.size >= maxCacheSize) {
+                val toRemove = cache.size - maxCacheSize + 1
+                cache.keys.take(toRemove).forEach { cache.remove(it) }
+            }
+        }
+        
         cache[key] = WeakReference(value)
         return value
     }
@@ -286,10 +302,11 @@ class MatrixPool {
         
         synchronized(pool) {
             // Only keep up to maxPoolSize matrices
-            if (counter.get() < maxPoolSize) {
+            // Check actual pool size to avoid counter drift
+            if (pool.size < maxPoolSize) {
                 matrix.reset()
                 pool.addLast(matrix)
-                counter.incrementAndGet()
+                counter.set(pool.size)
             }
         }
     }
@@ -359,6 +376,12 @@ class QueueOptimizer<T> {
     
     /**
      * Gets queue size (approximate for concurrent access)
+     * 
+     * Note: Due to the lock-free nature of ConcurrentLinkedQueue,
+     * the size returned is an approximation and may not reflect
+     * concurrent modifications happening at the same time.
+     * For precise size tracking in low-concurrency scenarios,
+     * consider using synchronized collections instead.
      * 
      * @return Current size (may be approximate due to concurrent modifications)
      */
