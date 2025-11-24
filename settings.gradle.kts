@@ -18,9 +18,9 @@ rootProject.name = "FlorisBoard"
 
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         google()
         mavenCentral()
+        gradlePluginPortal()
     }
 }
 
