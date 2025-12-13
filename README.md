@@ -67,6 +67,11 @@ fully respecting your privacy. Currently in beta state.
 </tr>
 </table>
 
+## Where is the compiled APK?
+
+- **Prebuilt**: Download signed APKs from the [GitHub Releases](https://github.com/florisboard/florisboard/releases) page (stable and preview tracks).
+- **Local builds**: After running `./gradlew :app:assembleRelease` or `./build_unsigned.sh`, the generated APKs are placed in `app/build/outputs/apk/release/` (use `app/build/outputs/apk/debug/` for debug builds).
+
 Beginning with v0.7 FlorisBoard will enter the public beta on Google Play.
 
 ## Highlighted features
