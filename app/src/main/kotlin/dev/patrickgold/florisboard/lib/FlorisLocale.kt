@@ -161,7 +161,7 @@ class FlorisLocale private constructor(val base: Locale) {
          * @param locales Collection of FlorisLocale objects to process
          * @return Map of FlorisLocale to their LanguageProperties
          */
-        fun getBatchLanguageProperties(locales: Collection<FlorisLocale>): Map<FlorisLocale, LanguageProperties> {
+        internal fun getBatchLanguageProperties(locales: Collection<FlorisLocale>): Map<FlorisLocale, LanguageProperties> {
             val languageCodes = locales.map { it.language }
             val propertiesMap = LanguagePropertiesDatabase.getBatchProperties(languageCodes)
             return locales.associateWith { locale ->

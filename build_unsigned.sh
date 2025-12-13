@@ -9,10 +9,9 @@ cd "$SCRIPT_DIR"
 # Clean previous builds
 ./gradlew clean
 
-# Build unsigned release and beta APKs
-./gradlew :app:assembleRelease :app:assembleBeta
+# Build unsigned release APK
+./gradlew :app:assembleRelease
 
 echo "Build finished."
 echo "Unsigned APKs are in:"
 echo "  app/build/outputs/apk/release/"
-echo "  app/build/outputs/apk/beta/"

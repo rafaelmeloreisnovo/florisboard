@@ -1,5 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">FlorisBoard</string>
+    <string name="floris_app_name">FlorisBoard</string>
 
     <string name="key__phone_pause" comment="Label for the Pause key in the telephone keyboard layout">Pause</string>
     <string name="key__phone_wait" comment="Label for the Wait key in the telephone keyboard layout">Wait</string>
@@ -723,6 +724,10 @@
     <string name="pref__clipboard__history_hide_on_next_text_field__label">Hide history on next text field</string>
     <string name="pref__clipboard__clear_primary_clip_affects_history_if_unpinned__label">Clear primary clip affects history</string>
     <string name="pref__clipboard__clear_primary_clip_affects_history_if_unpinned__summary">Clearing the primary clip also removes it from the history, if not pinned</string>
+    <string name="pref__clipboard__clear_primary_clip_deletes_last_item__label">Clearing the primary clip deletes the latest history item</string>
+    <string name="pref__clipboard__clear_primary_clip_deletes_last_item__summary">Clearing the primary clip also deletes the most recent history entry</string>
+    <string name="pref__clipboard__sync_from_system_clipboard__summary">System clipboard updates also update the Floris clipboard</string>
+    <string name="pref__clipboard__sync_to_system_clipboard__summary">Floris clipboard updates also update the system clipboard</string>
     <string name="send_to_clipboard__unknown_error">An unknown error occurred. Please try again!</string>
     <string name="send_to_clipboard__type_not_supported_error">This media type is not supported.</string>
     <string name="send_to_clipboard__description__copied_image_to_clipboard">Copied below image to clipboard.</string>

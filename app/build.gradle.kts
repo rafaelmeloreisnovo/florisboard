@@ -4,17 +4,20 @@ plugins {
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlinx.kover)
-    alias(libs.plugins.mannodermaus.android.junit5)
 }
+
+val projectMinSdk: String by project
+val projectTargetSdk: String by project
+val projectCompileSdk: String by project
 
 android {
     namespace = "dev.patrickgold.florisboard"
-    compileSdk = 34 // Se der erro, mude para 33 ou 35 dependendo do seu SDK instalado
+    compileSdk = projectCompileSdk.toInt()
 
     defaultConfig {
         applicationId = "dev.patrickgold.florisboard"
-        minSdk = 26
-        targetSdk = 34
+        minSdk = projectMinSdk.toInt()
+        targetSdk = projectTargetSdk.toInt()
         versionCode = 85
         versionName = "0.4.0-bypassed"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -22,6 +25,14 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+
+        buildConfigField("String", "BUILD_COMMIT_HASH", "\"unknown\"")
+        buildConfigField("String", "FLADDONS_API_VERSION", "\"v1\"")
+        buildConfigField("String", "FLADDONS_STORE_URL", "\"addons.florisboard.org\"")
         
         // Garante que o Gradle ache os arquivos de tradução e ícones
         sourceSets {
@@ -31,16 +42,9 @@ android {
         }
     }
 
-    // --- O TRUQUE DA ASSINATURA ---
-    signingConfigs {
-        create("release") {
-            // Usa a chave de debug que todo PC tem.
-            // O caminho muda sozinho se for Windows ou Linux.
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     buildTypes {
@@ -48,21 +52,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            
-            // AQUI A MÁGICA: A versão release vai usar a chave de debug
-            signingConfig = signingConfigs.getByName("release") 
-            
-            // Evita que o build pare por erros bobos de tradução ou lint
-            lintOptions {
-                checkReleaseBuilds = false
-                abortOnError = false
-            }
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -75,6 +69,7 @@ android {
         jvmTarget = "17"
         freeCompilerArgs = freeCompilerArgs + listOf(
             "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
             "-Xjvm-default=all"
         )
     }
@@ -97,11 +92,15 @@ dependencies {
     implementation(projects.lib.color)
     implementation(projects.lib.kotlin)
     implementation(projects.lib.snygg) 
+    implementation(projects.lib.compose)
 
     // Dependências externas essenciais
+    implementation(libs.androidx.autofill)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material.icons)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
@@ -109,7 +108,13 @@ dependencies {
     implementation(libs.accompanist.systemuicontroller)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.emoji2)
+    implementation(libs.cache4k)
+    implementation(libs.patrickgold.compose.tooltip)
+    implementation(libs.patrickgold.jetpref.datastore.ui)
+    implementation(libs.patrickgold.jetpref.material.ui)
+    implementation(libs.patrickgold.jetpref.datastore.model)
     
     // Testes (opcional, mas evita erros se o projeto pedir)
-    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test.junit5)
 }
