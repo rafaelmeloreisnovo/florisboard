@@ -161,7 +161,7 @@ jobs:
       - name: Check if signing secrets are available
         id: check_secrets
         env:
-          HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
+          HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_STORE_PASS != '' && secrets.RELEASE_KEY_PASS != '' && 'true' || 'false' }}
         run: |
           echo "has_signing_secrets=$HAS_KEYSTORE" >> $GITHUB_OUTPUT
 
@@ -191,12 +191,13 @@ jobs:
             echo "apksigner not found at $APKSIGNER"; exit 1
           fi
           echo "Signing APK (output: $SIGNED_APK)..."
-          # Use stdin for password input to avoid credential exposure in process lists
+          # Use environment variables for password input to avoid credential exposure in process lists
           "$APKSIGNER" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" --ks-pass "env:STORE_PASS" --key-pass "env:KEY_PASS" --out "$SIGNED_APK" "$APK_PATH"
           echo "Signed APK written to $SIGNED_APK"
           echo "signed_apk=$SIGNED_APK" >> $GITHUB_OUTPUT
-          # Cleanup keystore file
+          # Cleanup keystore file and temporary directory
           rm -f "$KS"
+          rm -rf "$TMP_DIR"
         shell: bash
 
       - name: Upload signed APK artifact
