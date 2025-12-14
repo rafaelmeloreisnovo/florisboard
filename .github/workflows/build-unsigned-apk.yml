@@ -161,13 +161,9 @@ jobs:
       - name: Check if signing secrets are available
         id: check_secrets
         env:
-          HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+          HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
         run: |
-          if [ "$HAS_KEYSTORE" = "true" ]; then
-            echo "has_signing_secrets=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_signing_secrets=false" >> $GITHUB_OUTPUT
-          fi
+          echo "has_signing_secrets=$HAS_KEYSTORE" >> $GITHUB_OUTPUT
 
       - name: Sign APK (if keystore provided)
         id: sign_apk
@@ -195,7 +191,8 @@ jobs:
             echo "apksigner not found at $APKSIGNER"; exit 1
           fi
           echo "Signing APK (output: $SIGNED_APK)..."
-          "$APKSIGNER" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASS" --key-pass "pass:$KEY_PASS" --out "$SIGNED_APK" "$APK_PATH"
+          # Use stdin for password input to avoid credential exposure in process lists
+          "$APKSIGNER" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" --ks-pass "env:STORE_PASS" --key-pass "env:KEY_PASS" --out "$SIGNED_APK" "$APK_PATH"
           echo "Signed APK written to $SIGNED_APK"
           echo "signed_apk=$SIGNED_APK" >> $GITHUB_OUTPUT
           # Cleanup keystore file
