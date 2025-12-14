@@ -119,8 +119,8 @@ val generateJsonSchema by tasks.register<JavaExec>("generateJsonSchema") {
         // This is a conservative classpath; good enough for the generator and CI-safe
         val runtimeCp = configurations.getByName("debugRuntimeClasspath")
         classpath = files(
-            "$buildDir/tmp/kotlin-classes/debug",
-            "$buildDir/intermediates/javac/debug/classes",
+            "${layout.buildDirectory.get()}/tmp/kotlin-classes/debug",
+            "${layout.buildDirectory.get()}/intermediates/javac/debug/classes",
             runtimeCp
         )
     }

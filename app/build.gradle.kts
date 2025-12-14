@@ -1,14 +1,30 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.agp.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlinx.kover)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+    alias(libs.plugins.mikepenz.aboutlibraries)
 }
 
 val projectMinSdk: String by project
 val projectTargetSdk: String by project
 val projectCompileSdk: String by project
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+        freeCompilerArgs.set(listOf(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-Xjvm-default=all"
+        ))
+    }
+}
 
 android {
     namespace = "dev.patrickgold.florisboard"
@@ -65,15 +81,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs = freeCompilerArgs + listOf(
-            "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=kotlin.contracts.ExperimentalContracts",
-            "-Xjvm-default=all"
-        )
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -86,6 +93,10 @@ android {
     }
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
     // Trazendo as bibliotecas internas do projeto
     implementation(projects.lib.android)
@@ -93,6 +104,7 @@ dependencies {
     implementation(projects.lib.kotlin)
     implementation(projects.lib.snygg) 
     implementation(projects.lib.compose)
+    implementation(projects.lib.native)
 
     // Dependências externas essenciais
     implementation(libs.androidx.autofill)
@@ -103,17 +115,25 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.accompanist.systemuicontroller)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.emoji2)
+    implementation(libs.androidx.emoji2.views)
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.cache4k)
     implementation(libs.patrickgold.compose.tooltip)
     implementation(libs.patrickgold.jetpref.datastore.ui)
     implementation(libs.patrickgold.jetpref.material.ui)
     implementation(libs.patrickgold.jetpref.datastore.model)
+    implementation(libs.mikepenz.aboutlibraries.core)
+    implementation(libs.mikepenz.aboutlibraries.compose)
     
     // Testes (opcional, mas evita erros se o projeto pedir)
     testImplementation(libs.kotlin.test.junit5)

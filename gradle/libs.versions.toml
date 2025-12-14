@@ -87,6 +87,7 @@ kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", versi
 agp-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 agp-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 agp-test = { id = "com.android.test", version.ref = "android-gradle-plugin" }
+androidx-room = { id = "androidx.room", version.ref = "androidx-room" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
