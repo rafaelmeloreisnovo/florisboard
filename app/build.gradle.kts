@@ -61,7 +61,10 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = false
+        // Note: MissingTranslation and ExtraTranslation are disabled to allow partial translations
+        // while maintaining build stability across multiple language packs
         disable += setOf("MissingTranslation", "ExtraTranslation")
+        baseline = file("lint-baseline.xml")
     }
 
     buildTypes {
