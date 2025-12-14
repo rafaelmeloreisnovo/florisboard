@@ -1,0 +1,24 @@
+# FlorisBoard APK Signing Configuration
+# 
+# This file contains the configuration for signing APKs with apksigner.
+# To use this configuration:
+# 1. Copy this file to 'signing.properties' in the same directory
+# 2. Fill in your actual keystore information below
+# 3. Keep signing.properties secure and never commit it to version control
+#
+# The signing.properties file is already listed in .gitignore
+
+# Path to your keystore file (.jks or .keystore)
+# Can be absolute path or relative to project root
+# Example: keystore/release.jks or /path/to/your/keystore.jks
+KEYSTORE_FILE=
+
+# Alias of the key within the keystore
+# Example: my_release_key
+KEYSTORE_ALIAS=
+
+# Password for the keystore
+KEYSTORE_PASSWORD=
+
+# Password for the key alias (often the same as keystore password)
+KEY_PASSWORD=
