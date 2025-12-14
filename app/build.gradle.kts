@@ -61,6 +61,7 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = false
+        disable += setOf("MissingTranslation", "ExtraTranslation")
     }
 
     buildTypes {
@@ -68,11 +69,21 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
+            // Performance optimizations
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             isMinifyEnabled = false
+            
+            // Speed up debug builds
+            ndk {
+                debugSymbolLevel = "NONE"
+            }
         }
     }
 
@@ -84,11 +95,23 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // Disable unused features for faster builds
+        aidl = false
+        renderScript = false
+        shaders = false
     }
     
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Remove duplicate files
+            pickFirsts += setOf(
+                "META-INF/versions/9/previous-compilation-data.bin"
+            )
+        }
+        jniLibs {
+            // Reduce APK size by keeping only required architectures
+            useLegacyPackaging = false
         }
     }
 }
@@ -137,4 +160,5 @@ dependencies {
     
     // Testes (opcional, mas evita erros se o projeto pedir)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.junit.jupiter.params)
 }

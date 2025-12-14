@@ -1,6 +1,11 @@
 # Disable obfuscation (we use Proguard exclusively for optimization)
 -dontobfuscate
 
+# Optimization flags for better performance and smaller APK
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+-allowaccessmodification
+
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
 -if @kotlinx.serialization.Serializable class **
@@ -27,3 +32,12 @@
 
 # @Serializable and @Polymorphic are used at runtime for polymorphic serialization.
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+
+# Remove logging for release builds (better performance and smaller size)
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+}
+
+# Optimize Kotlin metadata
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
