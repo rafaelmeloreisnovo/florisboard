@@ -10,6 +10,7 @@ O projeto inclui um script automatizado para assinar APKs usando o `apksigner` d
 
 - **`signing.properties.template`**: Template com as variáveis necessárias para configuração
 - **`sign_apk.sh`**: Script bash que realiza a assinatura do APK
+- **`build_and_sign.sh`**: Script integrado que faz build e assinatura em uma única execução
 - **`signing.properties`**: Arquivo de configuração real (não versionado, criado pelo usuário)
 
 ## Configuração Inicial
@@ -64,7 +65,22 @@ Para assinar um APK, execute o script passando o caminho do APK como argumento:
 
 ### Fluxo Completo de Build e Assinatura
 
-#### Opção 1: Build e Assinatura Manual
+#### Opção 1: Build e Assinatura Automatizado (Recomendado)
+
+Use o script integrado que faz build e assinatura em um único comando:
+
+```bash
+./build_and_sign.sh
+```
+
+Este script executa automaticamente:
+1. Limpeza dos builds anteriores
+2. Build do APK release não assinado
+3. Assinatura do APK gerado
+4. Verificação da assinatura
+5. Geração do checksum SHA256
+
+#### Opção 2: Build e Assinatura Manual
 
 ```bash
 # 1. Build do APK não assinado
@@ -74,7 +90,7 @@ Para assinar um APK, execute o script passando o caminho do APK como argumento:
 ./sign_apk.sh app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
-#### Opção 2: Usando o Script de Build Existente
+#### Opção 3: Usando o Script de Build Existente
 
 O projeto já possui um script `build_unsigned.sh` para builds não assinados:
 
