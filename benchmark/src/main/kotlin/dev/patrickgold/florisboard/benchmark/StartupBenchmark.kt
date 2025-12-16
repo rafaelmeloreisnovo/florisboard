@@ -132,7 +132,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
         }
     }
 
-    private fun isPackageInstalled(pkg: String): Boolean {
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.isPackageInstalled(pkg: String): Boolean {
         return try {
             val out = device.executeShellCommand("pm list packages $pkg")
             out?.contains(pkg) ?: false
@@ -142,7 +142,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
         }
     }
 
-    private fun isImeServiceDeclared(pkg: String, service: String): Boolean {
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.isImeServiceDeclared(pkg: String, service: String): Boolean {
         return try {
             val out = device.executeShellCommand("dumpsys package $pkg")
             out != null && (out.contains(service) || out.contains(".FlorisImeService"))
@@ -152,7 +152,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
         }
     }
 
-    private fun enableImeSafe(service: String) {
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.enableImeSafe(service: String) {
         try {
             device.executeShellCommand("ime enable $service")
         } catch (e: Exception) {

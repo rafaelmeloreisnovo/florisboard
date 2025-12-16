@@ -16,7 +16,6 @@
 
 package dev.patrickgold.florisboard.benchmark
 
-import androidx.benchmark.macro.ExperimentalBaselineProfilesApi
 import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -24,7 +23,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.lang.Exception
 
-@ExperimentalBaselineProfilesApi
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
     @get:Rule
@@ -37,7 +35,7 @@ class BaselineProfileGenerator {
 
     @Test
     fun startup() =
-        baselineProfileRule.collectBaselineProfile(packageName = targetPackage) {
+        baselineProfileRule.collect(packageName = targetPackage) {
             try {
                 // Reset to home so the baseline collection starts from a known state
                 pressHome()
@@ -45,9 +43,9 @@ class BaselineProfileGenerator {
                 val pkg = targetPackage
                 try {
                     val pm = device.executeShellCommand("pm list packages $pkg")
-                    if (pm == null || !pm.contains(pkg)) {
+                    if (pm == null || pm.contains(pkg).not()) {
                         println("BaselineProfileGenerator: target package '$pkg' not installed on device; skipping startup profile collection.")
-                        return@collectBaselineProfile
+                        return@collect
                     }
                 } catch (e: Exception) {
                     println("BaselineProfileGenerator: failed to query package manager: ${e.message}. Proceeding with best-effort collection.")
