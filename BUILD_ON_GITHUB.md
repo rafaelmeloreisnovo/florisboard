@@ -19,4 +19,3 @@ The **Build APK (unsigned)** workflow runs automatically on `push`, `pull_reques
 1. Transfer the desired APK to your device.
 2. Enable installation from unknown sources (usually under **Settings → Security**).
 3. Open the APK file and confirm installation.
-

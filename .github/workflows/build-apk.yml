@@ -47,9 +47,9 @@ jobs:
       - name: Show APK paths
         run: |
           echo "Debug APKs:"
-          find app/build/outputs/apk/debug -maxdepth 2 -type f -name "*.apk" -print || true
+          find app/build/outputs/apk/debug -maxdepth 1 -type f -name "*.apk" -print || true
           echo "Release APKs:"
-          find app/build/outputs/apk/release -maxdepth 2 -type f -name "*.apk" -print || true
+          find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print || true
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
