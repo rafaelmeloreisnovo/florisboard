@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,9 +50,9 @@ jobs:
       - name: Show APK paths
         run: |
           echo "Debug APKs:"
-          find app/build/outputs/apk/debug -maxdepth 1 -type f -name "*.apk" -print || true
+          find app/build/outputs/apk/debug -type f -name "*.apk" -print || true
           echo "Release APKs:"
-          find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print || true
+          find app/build/outputs/apk/release -type f -name "*.apk" -print || true
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
