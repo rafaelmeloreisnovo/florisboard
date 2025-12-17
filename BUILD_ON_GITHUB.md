@@ -1,6 +1,6 @@
 ## Build APKs on GitHub
 
-The **Build APK (unsigned)** workflow runs automatically on `push`, `pull_request` and can be triggered manually from the **Actions** tab. It installs Java 17, fetches assets, and builds both **Debug** and **Release** APKs using the unsigned flag (`-PuserlandUnsignedApk=true`), so no keystore is required.
+The **Build APK (unsigned)** workflow runs automatically on `push`, `pull_request` and can be triggered manually from the **Actions** tab. It installs Java 17, fetches assets, and builds both **Debug** and **Release** APKs using the unsigned flag (`-PuserlandUnsignedApk=true`), so no keystore is required and no signing step is performed.
 
 ### How to run
 1. Open the **Actions** tab in GitHub.
