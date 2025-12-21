@@ -50,4 +50,5 @@ dependencies {
     
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.junit.jupiter.params)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

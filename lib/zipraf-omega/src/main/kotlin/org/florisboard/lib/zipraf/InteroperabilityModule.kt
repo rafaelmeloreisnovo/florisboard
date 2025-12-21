@@ -83,9 +83,9 @@ data class SchemaVersion(
 )
 
 /**
- * Migration step
+ * Migration step for interoperability module
  */
-data class MigrationStep(
+data class InteropMigrationStep(
     val name: String,
     val fromVersion: String,
     val toVersion: String,
@@ -105,7 +105,7 @@ data class MigrationStep(
 class InteroperabilityModule {
     
     private val knownVersions = mutableSetOf<SemanticVersion>()
-    private val migrationSteps = mutableListOf<MigrationStep>()
+    private val migrationSteps = mutableListOf<InteropMigrationStep>()
     private val schemas = mutableMapOf<String, SchemaVersion>()
     
     /**
@@ -122,7 +122,7 @@ class InteroperabilityModule {
      * 
      * @param step Migration step to register
      */
-    fun registerMigrationStep(step: MigrationStep) {
+    fun registerMigrationStep(step: InteropMigrationStep) {
         migrationSteps.add(step)
     }
     
@@ -270,11 +270,11 @@ class InteroperabilityModule {
     private fun findMigrationPath(
         source: SemanticVersion,
         target: SemanticVersion
-    ): List<MigrationStep> {
+    ): List<InteropMigrationStep> {
         if (source == target) return emptyList()
         
         // Simple linear path search
-        val path = mutableListOf<MigrationStep>()
+        val path = mutableListOf<InteropMigrationStep>()
         var current = source.toString()
         
         while (current != target.toString()) {

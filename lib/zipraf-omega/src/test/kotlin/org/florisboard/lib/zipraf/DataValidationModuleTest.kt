@@ -29,7 +29,7 @@ class DataValidationModuleTest {
         val error = module.validateRange(15, 1, 10, "testField")
         assertNotNull(error)
         assertEquals("testField", error?.field)
-        assertEquals(ValidationResult.ERROR.name, error?.severity)
+        assertEquals(DataValidationResult.ERROR.name, error?.severity)
     }
     
     @Test
@@ -153,7 +153,7 @@ class DataValidationModuleTest {
             )
         )
         
-        assertEquals(ValidationResult.VALID.name, result.result)
+        assertEquals(DataValidationResult.VALID.name, result.result)
         assertTrue(result.message.contains("All conditions passed"))
     }
     
@@ -168,7 +168,7 @@ class DataValidationModuleTest {
             )
         )
         
-        assertEquals(ValidationResult.INVALID.name, result.result)
+        assertEquals(DataValidationResult.INVALID.name, result.result)
         assertTrue(result.message.contains("condition2"))
     }
     
