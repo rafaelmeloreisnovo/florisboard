@@ -25,9 +25,9 @@ import kotlinx.serialization.Serializable
 import kotlin.reflect.KClass
 
 /**
- * Validation result types
+ * Validation result types for data validation
  */
-enum class ValidationResult {
+enum class DataValidationResult {
     VALID,
     INVALID,
     WARNING,
@@ -113,7 +113,7 @@ class DataValidationModule {
         val name: String,
         val predicate: (T) -> Boolean,
         val errorMessage: String,
-        val severity: ValidationResult = ValidationResult.ERROR
+        val severity: DataValidationResult = DataValidationResult.ERROR
     )
     
     /**
@@ -185,7 +185,7 @@ class DataValidationModule {
                         value = data.toString(),
                         rule = "invariant:${typedInvariant.name}",
                         message = typedInvariant.errorMessage,
-                        severity = ValidationResult.ERROR.name
+                        severity = DataValidationResult.ERROR.name
                     )
                 )
             }
@@ -224,7 +224,7 @@ class DataValidationModule {
                         value = input.toString(),
                         rule = "execution",
                         message = "Operation failed: ${e.message}",
-                        severity = ValidationResult.ERROR.name
+                        severity = DataValidationResult.ERROR.name
                     )
                 )
             )
@@ -245,7 +245,7 @@ class DataValidationModule {
                     value = actualOutput.toString(),
                     rule = "equality",
                     message = "Expected $expectedOutput but got $actualOutput",
-                    severity = ValidationResult.ERROR.name
+                    severity = DataValidationResult.ERROR.name
                 )
             )
         )
@@ -298,7 +298,7 @@ class DataValidationModule {
                 value = value.toString(),
                 rule = "range",
                 message = "Value $value is outside range [$min, $max]",
-                severity = ValidationResult.ERROR.name
+                severity = DataValidationResult.ERROR.name
             )
         } else null
     }
@@ -322,7 +322,7 @@ class DataValidationModule {
                 value = value,
                 rule = "format",
                 message = "Value does not match required pattern: ${pattern.pattern}",
-                severity = ValidationResult.ERROR.name
+                severity = DataValidationResult.ERROR.name
             )
         } else null
     }
@@ -348,7 +348,7 @@ class DataValidationModule {
                 value = value,
                 rule = "length",
                 message = "Length ${value.length} is outside range [$minLength, $maxLength]",
-                severity = ValidationResult.ERROR.name
+                severity = DataValidationResult.ERROR.name
             )
         } else null
     }
@@ -374,7 +374,7 @@ class DataValidationModule {
                 value = "size=${collection.size}",
                 rule = "collection_size",
                 message = "Collection size ${collection.size} is outside range [$minSize, $maxSize]",
-                severity = ValidationResult.ERROR.name
+                severity = DataValidationResult.ERROR.name
             )
         } else null
     }
@@ -396,7 +396,7 @@ class DataValidationModule {
                 value = "null",
                 rule = "non_null",
                 message = "Value must not be null",
-                severity = ValidationResult.ERROR.name
+                severity = DataValidationResult.ERROR.name
             )
         } else null
     }
@@ -417,7 +417,7 @@ class DataValidationModule {
         
         return LogicValidationResult(
             validationName = name,
-            result = if (allPassed) ValidationResult.VALID.name else ValidationResult.INVALID.name,
+            result = if (allPassed) DataValidationResult.VALID.name else DataValidationResult.INVALID.name,
             message = if (allPassed) {
                 "All conditions passed"
             } else {
