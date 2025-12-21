@@ -493,6 +493,7 @@ class ErrorHandlingModule {
             errorLog.clear()
         }
         errorCounts.clear()
+        circuitBreakers.clear()
     }
     
     /**

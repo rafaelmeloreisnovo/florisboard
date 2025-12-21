@@ -91,7 +91,7 @@ class StandardsComplianceModuleTest {
         var count = 0
         val result = module.checkCompliance("ISO-9001") { requirement ->
             count++
-            count % 2 == 0 // Meet every other requirement (~50%)
+            count <= 3 // Meet first 3 out of 5 requirements (60%), which is >= 50% but < 80%
         }
         
         assertEquals(ComplianceLevel.PARTIALLY_COMPLIANT.name, result.level)
