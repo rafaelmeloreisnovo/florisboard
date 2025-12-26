@@ -106,7 +106,7 @@ class FlorisApplication : Application() {
             try {
                 FlorisEmojiCompat.init(this)
             } catch (e: Exception) {
-                Log.e("FlorisApplication", "Failed to initialize emoji compat", e)
+                Log.e(TAG, "Failed to initialize emoji compat", e)
             }
             
             flogError { "dummy result: ${dummyAdd(3,4)}" }
@@ -115,28 +115,29 @@ class FlorisApplication : Application() {
                 try {
                     cacheDir?.deleteContentsRecursively()
                 } catch (e: Exception) {
-                    Log.e("FlorisApplication", "Failed to clear cache", e)
+                    Log.e(TAG, "Failed to clear cache before user unlock", e)
                 }
                 
                 try {
                     extensionManager.value.init()
                 } catch (e: Exception) {
-                    Log.e("FlorisApplication", "Failed to initialize extension manager", e)
+                    Log.e(TAG, "Failed to initialize extension manager before user unlock", e)
                 }
                 
                 try {
                     registerReceiver(BootComplete(), IntentFilter(Intent.ACTION_USER_UNLOCKED))
                 } catch (e: Exception) {
-                    Log.e("FlorisApplication", "Failed to register boot receiver", e)
+                    Log.e(TAG, "Failed to register boot completion receiver", e)
                 }
                 return
             }
 
             init()
         } catch (e: Exception) {
-            Log.e("FlorisApplication", "Critical error during onCreate", e)
+            Log.e(TAG, "Critical error during onCreate", e)
             CrashUtility.stageException(e)
-            // Continue execution even if there's an error - don't return to allow partial functionality
+            // Continue execution to allow partial functionality
+            // Core components may still initialize successfully in init()
         }
     }
 
@@ -144,7 +145,7 @@ class FlorisApplication : Application() {
         try {
             cacheDir?.deleteContentsRecursively()
         } catch (e: Exception) {
-            Log.e("FlorisApplication", "Failed to clear cache during init", e)
+            Log.e(TAG, "Failed to clear cache during initialization", e)
         }
         
         scope.launch {
@@ -156,7 +157,7 @@ class FlorisApplication : Application() {
                 Log.i("PREFS", result.toString())
                 preferenceStoreLoaded.value = true
             } catch (e: Exception) {
-                Log.e("FlorisApplication", "Failed to initialize preference store", e)
+                Log.e(TAG, "Failed to initialize preference store", e)
                 // Mark as loaded anyway to allow app to continue
                 preferenceStoreLoaded.value = true
             }
@@ -165,19 +166,19 @@ class FlorisApplication : Application() {
         try {
             extensionManager.value.init()
         } catch (e: Exception) {
-            Log.e("FlorisApplication", "Failed to initialize extension manager during init", e)
+            Log.e(TAG, "Failed to initialize extension manager", e)
         }
         
         try {
             clipboardManager.value.initializeForContext(this)
         } catch (e: Exception) {
-            Log.e("FlorisApplication", "Failed to initialize clipboard manager", e)
+            Log.e(TAG, "Failed to initialize clipboard manager", e)
         }
         
         try {
             DictionaryManager.init(this)
         } catch (e: Exception) {
-            Log.e("FlorisApplication", "Failed to initialize dictionary manager", e)
+            Log.e(TAG, "Failed to initialize dictionary manager", e)
         }
     }
 

@@ -311,7 +311,9 @@ class FlorisImeService : LifecycleInputMethodService() {
         FlorisImeServiceReference = WeakReference(this)
         
         try {
-            WindowCompat.setDecorFitsSystemWindows(window.window!!, false)
+            window.window?.let { win ->
+                WindowCompat.setDecorFitsSystemWindows(win, false)
+            } ?: flogWarning { "Window is null, cannot set decorFitsSystemWindows" }
         } catch (e: Exception) {
             flogError { "Failed to set window decorFitsSystemWindows: ${e.message}" }
         }
@@ -374,8 +376,12 @@ class FlorisImeService : LifecycleInputMethodService() {
         // Instantiate and install bottom sheet host UI view
         try {
             val bottomSheetView = FlorisBottomSheetHostUiView()
-            window.window?.findViewById<ViewGroup>(android.R.id.content)?.addView(bottomSheetView)
-                ?: flogWarning { "Could not find content view to add bottom sheet" }
+            val contentView = window.window?.findViewById<ViewGroup>(android.R.id.content)
+            if (contentView != null) {
+                contentView.addView(bottomSheetView)
+            } else {
+                flogWarning { "Could not find content view to add bottom sheet" }
+            }
         } catch (e: Exception) {
             flogError { "Failed to create bottom sheet view: ${e.message}" }
         }
