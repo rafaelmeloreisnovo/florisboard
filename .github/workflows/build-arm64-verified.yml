@@ -1,0 +1,146 @@
+name: Build and Verify ARM64 APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'copilot/**'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ANDROID_SDK_ROOT: /usr/local/share/android-sdk
+  BUILD_TOOLS_VERSION: '34.0.0'
+  PLATFORM_VERSION: 'android-34'
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Make scripts executable
+        run: |
+          chmod +x ./gradlew
+          chmod +x ./build_unsigned.sh
+          chmod +x ./build_and_verify_arm64.sh
+
+      - name: Install Android SDK command-line tools (with retry)
+        shell: bash
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          set -euo pipefail
+          attempts=0
+          max_attempts=3
+          until [ "$attempts" -ge "$max_attempts" ]
+          do
+            attempts=$((attempts+1))
+            echo "SDK install attempt $attempts/$max_attempts"
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+            cd "$ANDROID_SDK_ROOT/cmdline-tools"
+            if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
+              curl -sS -o cmd.zip "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" || { echo "curl failed"; rm -f cmd.zip || true; sleep 5; continue; }
+              unzip -q cmd.zip -d tmpcmd || { echo "unzip failed"; rm -f cmd.zip || true; sleep 5; continue; }
+              rm -f cmd.zip
+              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+              mv tmpcmd/cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/" || true
+              rm -rf tmpcmd || true
+            fi
+            export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;${{ env.PLATFORM_VERSION }}" "build-tools;${{ env.BUILD_TOOLS_VERSION }}" && break
+            echo "sdkmanager failed, retrying in 5s..."
+            sleep 5
+          done
+
+      - name: Show environment info
+        run: |
+          java -version
+          echo "Android SDK: $ANDROID_SDK_ROOT"
+          "$ANDROID_SDK_ROOT/platform-tools/adb" version || true
+
+      - name: Fetch assets (retry up to 3 times)
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3: fetching assets"
+            if ./gradlew --no-daemon :app:fetchAssets; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "fetchAssets failed after 3 attempts"
+              exit 1
+            fi
+            echo "fetchAssets failed, retrying in 5 seconds..."
+            sleep 5
+          done
+
+      - name: Build and verify ARM64 APK
+        run: ./build_and_verify_arm64.sh
+
+      - name: Display build verification report
+        if: always()
+        run: |
+          if [ -f build_verification_report.md ]; then
+            echo "=== Build Verification Report ==="
+            cat build_verification_report.md
+          fi
+
+      - name: Upload unsigned APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: florisboard-arm64-unsigned
+          path: |
+            app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build_process.log
+            apk_verification.log
+            build_report.txt
+            build_verification_report.md
+          retention-days: 30
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f build_verification_report.md ]; then
+            echo "### Verification Report" >> $GITHUB_STEP_SUMMARY
+            cat build_verification_report.md >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### APK Files Generated" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d app/build/outputs/apk/release ]; then
+            for apk in app/build/outputs/apk/release/*.apk; do
+              if [ -f "$apk" ]; then
+                APK_NAME=$(basename "$apk")
+                APK_SIZE=$(du -h "$apk" | cut -f1)
+                echo "- **$APK_NAME** ($APK_SIZE)" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "No APK files found" >> $GITHUB_STEP_SUMMARY
+          fi
