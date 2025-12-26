@@ -66,6 +66,12 @@ target/
 
 # Build reports and logs
 build_report.txt
+build_userland_report.txt
+build_magisk_report.txt
 build_process.log
 apk_verification.log
 build_verification_report.md
+
+# Magisk module
+magisk_module/
+FlorisBoard-Magisk-ARM64-*.zip
