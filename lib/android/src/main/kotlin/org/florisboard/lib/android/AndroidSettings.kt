@@ -27,25 +27,36 @@ abstract class AndroidSettingsHelper(
     private val kClass: KClass<*>,
     val groupId: String,
 ) {
-    abstract fun getString(context: Context, key: String): String?
-
-    abstract fun getUriFor(key: String): Uri?
-
-    private fun reflectionGetAllStaticFields(kClass: KClass<*>) = sequence<Pair<String, String>> {
-        for (field in kClass.java.declaredFields) {
-            if (Modifier.isStatic(field.modifiers)) {
-                try {
-                    val value = field.get(null) as? String ?: continue
-                    yield(field.name to value)
-                } catch (e: Exception) {
-                    // Cannot access field, continue on to next one
+    // Cache for reflection results to avoid repeated reflection overhead
+    private val fieldCache: Map<String, String> by lazy {
+        buildMap {
+            for (field in kClass.java.declaredFields) {
+                if (Modifier.isStatic(field.modifiers) && Modifier.isPublic(field.modifiers)) {
+                    tryOrNull {
+                        // Make field accessible in case it's not public
+                        field.isAccessible = true
+                        val value = field.get(null) as? String
+                        if (value != null) {
+                            put(field.name, value)
+                        }
+                    }
                 }
             }
         }
     }
 
+    abstract fun getString(context: Context, key: String): String?
+
+    abstract fun getUriFor(key: String): Uri?
+
+    /**
+     * Gets all static String fields from the settings class using reflection.
+     * Results are cached after first call for performance.
+     * 
+     * @return Sequence of field name to field value pairs
+     */
     fun getAllKeys(): Sequence<Pair<String, String>> {
-        return reflectionGetAllStaticFields(kClass)
+        return fieldCache.asSequence()
     }
 
     fun observe(context: Context, key: String, observer: SystemSettingsObserver) {

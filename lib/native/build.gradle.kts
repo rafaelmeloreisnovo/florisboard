@@ -46,13 +46,20 @@ android {
                 targets("fl_native")
                 arguments(
                     "-DCMAKE_ANDROID_API=$minSdk",
+                    // Add optimization flags for better performance
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_PLATFORM=android-$minSdk",
                 )
+                // Enable compiler flags for better debugging and optimization
+                cFlags("-Wall", "-Wextra")
+                cppFlags("-Wall", "-Wextra", "-std=c++17")
             }
         }
 
         ndk {
             // Enable ABI filters for consistent ARM64/ARM32 builds
             // Matches the main app configuration for proper library inclusion
+            // Note: All ABIs must be included to prevent UnsatisfiedLinkError on different devices
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         }
     }
@@ -62,13 +69,17 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
             )
+            consumerProguardFiles("consumer-rules.pro")
         }
         create("beta") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
             )
+            consumerProguardFiles("consumer-rules.pro")
         }
     }
     compileOptions {

@@ -5,6 +5,27 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# Keep classes that use reflection for Android Settings access
+-keep class org.florisboard.lib.android.AndroidSettings** { *; }
+-keep class org.florisboard.lib.android.AndroidSettingsHelper { *; }
+
+# Keep Android Settings classes accessed via reflection
+-keep class android.provider.Settings { *; }
+-keep class android.provider.Settings$Global { *; }
+-keep class android.provider.Settings$Secure { *; }
+-keep class android.provider.Settings$System { *; }
+
+# Keep static String fields that are accessed via reflection
+-keepclassmembers class android.provider.Settings$Global {
+    public static java.lang.String *;
+}
+-keepclassmembers class android.provider.Settings$Secure {
+    public static java.lang.String *;
+}
+-keepclassmembers class android.provider.Settings$System {
+    public static java.lang.String *;
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
