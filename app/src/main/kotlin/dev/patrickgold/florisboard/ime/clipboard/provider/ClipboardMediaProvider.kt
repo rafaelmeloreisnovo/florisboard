@@ -140,16 +140,18 @@ class ClipboardMediaProvider : ContentProvider() {
                     values as ContentValues
                     val mediaUri = Uri.parse(values.getAsString(Columns.MediaUri))
                     // Get the orientation of the image
-                    val exifInterface = ExifInterface(context!!.contentResolver.openInputStream(mediaUri)!!)
                     var rotation = 0
-                    val orientation = exifInterface.getAttributeInt(
-                        ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.ORIENTATION_NORMAL
-                    )
-                    when (orientation) {
-                        ExifInterface.ORIENTATION_ROTATE_90 -> rotation = 90
-                        ExifInterface.ORIENTATION_ROTATE_180 -> rotation = 180
-                        ExifInterface.ORIENTATION_ROTATE_270 -> rotation = 270
+                    context!!.contentResolver.openInputStream(mediaUri)?.use { inputStream ->
+                        val exifInterface = ExifInterface(inputStream)
+                        val orientation = exifInterface.getAttributeInt(
+                            ExifInterface.TAG_ORIENTATION,
+                            ExifInterface.ORIENTATION_NORMAL
+                        )
+                        when (orientation) {
+                            ExifInterface.ORIENTATION_ROTATE_90 -> rotation = 90
+                            ExifInterface.ORIENTATION_ROTATE_180 -> rotation = 180
+                            ExifInterface.ORIENTATION_ROTATE_270 -> rotation = 270
+                        }
                     }
                     val id = ClipboardFileStorage.cloneUri(context!!, mediaUri)
                     val size = ClipboardFileStorage.getFileForId(context!!, id).length()
