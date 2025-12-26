@@ -200,7 +200,7 @@ class RiskMitigationModule {
      * 
      * @return FragmentationInfo with current fragmentation status
      */
-    fun checkFragmentation(): FragmentationInfo {
+    suspend fun checkFragmentation(): FragmentationInfo {
         val runtime = Runtime.getRuntime()
         val totalMemory = runtime.totalMemory()
         val freeMemory = runtime.freeMemory()
@@ -228,22 +228,20 @@ class RiskMitigationModule {
         
         if (isFragmented) {
             fragmentationEvents.incrementAndGet()
-            GlobalScope.launch {
-                _riskEvents.emit(
-                    RiskDetectionResult(
-                        riskType = RiskType.FRAGMENTATION.name,
-                        severity = if (fragmentationRatio > 0.90) RiskSeverity.HIGH.name else RiskSeverity.MEDIUM.name,
-                        detected = true,
-                        description = "Memory fragmentation detected: ${(fragmentationRatio * 100).toInt()}% used",
-                        mitigation = "Consider triggering garbage collection or memory defragmentation",
-                        metrics = mapOf(
-                            "total_bytes" to totalMemory.toDouble(),
-                            "free_bytes" to freeMemory.toDouble(),
-                            "fragmentation_ratio" to fragmentationRatio
-                        )
+            _riskEvents.emit(
+                RiskDetectionResult(
+                    riskType = RiskType.FRAGMENTATION.name,
+                    severity = if (fragmentationRatio > 0.90) RiskSeverity.HIGH.name else RiskSeverity.MEDIUM.name,
+                    detected = true,
+                    description = "Memory fragmentation detected: ${(fragmentationRatio * 100).toInt()}% used",
+                    mitigation = "Consider triggering garbage collection or memory defragmentation",
+                    metrics = mapOf(
+                        "total_bytes" to totalMemory.toDouble(),
+                        "free_bytes" to freeMemory.toDouble(),
+                        "fragmentation_ratio" to fragmentationRatio
                     )
                 )
-            }
+            )
         }
         
         return info
@@ -361,7 +359,7 @@ class RiskMitigationModule {
      * @param data Collection to check for redundancy
      * @return List of redundant items
      */
-    fun <T> detectRedundancy(data: Collection<T>): List<T> {
+    suspend fun <T> detectRedundancy(data: Collection<T>): List<T> {
         val seen = mutableSetOf<T>()
         val redundant = mutableListOf<T>()
         
@@ -373,22 +371,20 @@ class RiskMitigationModule {
         
         if (redundant.isNotEmpty()) {
             redundanciesFound.addAndGet(redundant.size.toLong())
-            GlobalScope.launch {
-                _riskEvents.emit(
-                    RiskDetectionResult(
-                        riskType = RiskType.REDUNDANCY.name,
-                        severity = if (redundant.size > data.size * 0.3) RiskSeverity.MEDIUM.name else RiskSeverity.LOW.name,
-                        detected = true,
-                        description = "Found ${redundant.size} redundant items out of ${data.size} total",
-                        mitigation = "Remove redundant items to optimize memory usage",
-                        metrics = mapOf(
-                            "total_items" to data.size.toDouble(),
-                            "redundant_items" to redundant.size.toDouble(),
-                            "redundancy_ratio" to (redundant.size.toDouble() / data.size)
-                        )
+            _riskEvents.emit(
+                RiskDetectionResult(
+                    riskType = RiskType.REDUNDANCY.name,
+                    severity = if (redundant.size > data.size * 0.3) RiskSeverity.MEDIUM.name else RiskSeverity.LOW.name,
+                    detected = true,
+                    description = "Found ${redundant.size} redundant items out of ${data.size} total",
+                    mitigation = "Remove redundant items to optimize memory usage",
+                    metrics = mapOf(
+                        "total_items" to data.size.toDouble(),
+                        "redundant_items" to redundant.size.toDouble(),
+                        "redundancy_ratio" to (redundant.size.toDouble() / data.size)
                     )
                 )
-            }
+            )
         }
         
         return redundant

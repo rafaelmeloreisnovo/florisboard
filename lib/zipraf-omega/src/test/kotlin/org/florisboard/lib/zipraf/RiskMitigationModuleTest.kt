@@ -74,7 +74,7 @@ class RiskMitigationModuleTest {
     }
     
     @Test
-    fun `test fragmentation detection`() {
+    fun `test fragmentation detection`() = runTest {
         val info = module.checkFragmentation()
         
         assertNotNull(info)
@@ -147,7 +147,7 @@ class RiskMitigationModuleTest {
     }
     
     @Test
-    fun `test redundancy detection`() {
+    fun `test redundancy detection`() = runTest {
         val data = listOf("a", "b", "c", "a", "b", "d")
         val redundant = module.detectRedundancy(data)
         
@@ -157,7 +157,7 @@ class RiskMitigationModuleTest {
     }
     
     @Test
-    fun `test redundancy detection with no duplicates`() {
+    fun `test redundancy detection with no duplicates`() = runTest {
         val data = listOf("a", "b", "c", "d")
         val redundant = module.detectRedundancy(data)
         
