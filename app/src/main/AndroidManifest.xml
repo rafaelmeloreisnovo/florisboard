@@ -32,6 +32,9 @@
         android:roundIcon="@mipmap/ic_app_icon_stable_round"
         android:supportsRtl="true"
         android:theme="@style/FlorisAppTheme"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:usesCleartextTraffic="false"
         tools:targetApi="tiramisu">
 
         <!-- Allow app to be profiled for benchmarking and baseline profile generation -->

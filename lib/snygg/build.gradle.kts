@@ -30,10 +30,11 @@ val projectCompileSdk: String by project
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_17)
         freeCompilerArgs.set(listOf(
             "-Xconsistent-data-class-copy-visibility",
             "-Xwhen-guards",
+            "-Xjvm-default=all"
         ))
     }
 }
@@ -68,8 +69,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
