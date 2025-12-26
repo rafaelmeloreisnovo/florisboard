@@ -104,7 +104,7 @@ android {
             // Enable crash detection in debug
             isDebuggable = true
             
-            // Android 15: Enable strict mode for better crash detection during development
+            // Enable JNI debugging to improve native crash diagnostics during development
             isJniDebuggable = true
         }
     }
