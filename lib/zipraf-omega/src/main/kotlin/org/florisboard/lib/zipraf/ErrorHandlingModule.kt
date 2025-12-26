@@ -229,12 +229,12 @@ class ErrorHandlingModule {
         return when {
             exception is IllegalArgumentException -> ErrorCategory.VALIDATION
             exception is SecurityException -> ErrorCategory.SECURITY
-            exception is OutOfMemoryError -> ErrorCategory.RESOURCE
             exception is InterruptedException -> ErrorCategory.CONCURRENCY
             exception is java.net.SocketTimeoutException -> ErrorCategory.TIMEOUT
             exception is java.io.IOException -> ErrorCategory.NETWORK
             exception.message?.contains("permission", ignoreCase = true) == true -> ErrorCategory.PERMISSION
             exception.message?.contains("corrupt", ignoreCase = true) == true -> ErrorCategory.DATA_CORRUPTION
+            exception.message?.contains("memory", ignoreCase = true) == true -> ErrorCategory.RESOURCE
             else -> ErrorCategory.UNKNOWN
         }
     }
