@@ -56,7 +56,7 @@ abstract class AndroidSettingsHelper(
      * @return Sequence of field name to field value pairs
      */
     fun getAllKeys(): Sequence<Pair<String, String>> {
-        return fieldCache.asSequence()
+        return fieldCache.asSequence().map { (key, value) -> key to value }
     }
 
     fun observe(context: Context, key: String, observer: SystemSettingsObserver) {
