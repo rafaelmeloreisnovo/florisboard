@@ -61,10 +61,16 @@ private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 @Suppress("unused")
 class FlorisApplication : Application() {
     companion object {
+        private const val TAG = "FlorisApplication"
+        
         init {
             try {
                 System.loadLibrary("fl_native")
-            } catch (_: Exception) {
+                Log.i(TAG, "Native library loaded successfully")
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e(TAG, "Failed to load native library: ${e.message}", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error loading native library: ${e.message}", e)
             }
         }
     }
@@ -95,36 +101,85 @@ class FlorisApplication : Application() {
                 flogOutputs = Flog.OUTPUT_CONSOLE,
             )
             CrashUtility.install(this)
-            FlorisEmojiCompat.init(this)
+            
+            // Initialize emoji compatibility with error handling
+            try {
+                FlorisEmojiCompat.init(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize emoji compat", e)
+            }
+            
             flogError { "dummy result: ${dummyAdd(3,4)}" }
 
             if (!UserManagerCompat.isUserUnlocked(this)) {
-                cacheDir?.deleteContentsRecursively()
-                extensionManager.value.init()
-                registerReceiver(BootComplete(), IntentFilter(Intent.ACTION_USER_UNLOCKED))
+                try {
+                    cacheDir?.deleteContentsRecursively()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to clear cache before user unlock", e)
+                }
+                
+                try {
+                    extensionManager.value.init()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to initialize extension manager before user unlock", e)
+                }
+                
+                try {
+                    registerReceiver(BootComplete(), IntentFilter(Intent.ACTION_USER_UNLOCKED))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to register boot completion receiver", e)
+                }
                 return
             }
 
             init()
         } catch (e: Exception) {
+            Log.e(TAG, "Critical error during onCreate", e)
             CrashUtility.stageException(e)
-            return
+            // Continue execution to allow partial functionality
+            // Core components may still initialize successfully in init()
         }
     }
 
     fun init() {
-        cacheDir?.deleteContentsRecursively()
-        scope.launch {
-            val result = FlorisPreferenceStore.initAndroid(
-                context = this@FlorisApplication,
-                datastoreName = FlorisPreferenceModel.NAME,
-            )
-            Log.i("PREFS", result.toString())
-            preferenceStoreLoaded.value = true
+        try {
+            cacheDir?.deleteContentsRecursively()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear cache during initialization", e)
         }
-        extensionManager.value.init()
-        clipboardManager.value.initializeForContext(this)
-        DictionaryManager.init(this)
+        
+        scope.launch {
+            try {
+                val result = FlorisPreferenceStore.initAndroid(
+                    context = this@FlorisApplication,
+                    datastoreName = FlorisPreferenceModel.NAME,
+                )
+                Log.i("PREFS", result.toString())
+                preferenceStoreLoaded.value = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize preference store", e)
+                // Mark as loaded anyway to allow app to continue
+                preferenceStoreLoaded.value = true
+            }
+        }
+        
+        try {
+            extensionManager.value.init()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize extension manager", e)
+        }
+        
+        try {
+            clipboardManager.value.initializeForContext(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize clipboard manager", e)
+        }
+        
+        try {
+            DictionaryManager.init(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize dictionary manager", e)
+        }
     }
 
     private inner class BootComplete : BroadcastReceiver() {
@@ -147,9 +202,11 @@ private tailrec fun Context.florisApplication(): FlorisApplication {
         is FlorisApplication -> this
         is ContextWrapper -> when {
             this.baseContext != null -> this.baseContext.florisApplication()
-            else -> FlorisApplicationReference.get()!!
+            else -> FlorisApplicationReference.get() ?: throw IllegalStateException("FlorisApplication not initialized")
         }
-        else -> tryOrNull { this.applicationContext as FlorisApplication } ?: FlorisApplicationReference.get()!!
+        else -> tryOrNull { this.applicationContext as FlorisApplication } 
+            ?: FlorisApplicationReference.get() 
+            ?: throw IllegalStateException("FlorisApplication not available")
     }
 }
 
