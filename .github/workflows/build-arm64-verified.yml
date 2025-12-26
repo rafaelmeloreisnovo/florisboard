@@ -53,15 +53,35 @@ jobs:
             mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
             cd "$ANDROID_SDK_ROOT/cmdline-tools"
             if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
-              curl -sS -o cmd.zip "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" || { echo "curl failed"; rm -f cmd.zip || true; sleep 5; continue; }
-              unzip -q cmd.zip -d tmpcmd || { echo "unzip failed"; rm -f cmd.zip || true; sleep 5; continue; }
+              # Download command-line tools
+              curl -sS -o cmd.zip \
+                "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" || {
+                echo "curl failed"
+                rm -f cmd.zip || true
+                sleep 5
+                continue
+              }
+              
+              # Extract command-line tools
+              unzip -q cmd.zip -d tmpcmd || {
+                echo "unzip failed"
+                rm -f cmd.zip || true
+                sleep 5
+                continue
+              }
+              
               rm -f cmd.zip
               mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
               mv tmpcmd/cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/" || true
               rm -rf tmpcmd || true
             fi
             export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;${{ env.PLATFORM_VERSION }}" "build-tools;${{ env.BUILD_TOOLS_VERSION }}" && break
+            
+            # Install SDK components
+            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
+              "platform-tools" \
+              "platforms;${{ env.PLATFORM_VERSION }}" \
+              "build-tools;${{ env.BUILD_TOOLS_VERSION }}" && break
             echo "sdkmanager failed, retrying in 5s..."
             sleep 5
           done

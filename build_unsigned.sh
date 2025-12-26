@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Build FlorisBoard APKs without custom signing (release + beta unsigned)
 # Enhanced for ARM64 architecture with comprehensive validation
 set -e

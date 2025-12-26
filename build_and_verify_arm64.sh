@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # FlorisBoard Enhanced ARM64 Build and Verification Script
 # This script performs comprehensive build validation and monitoring
 set -e

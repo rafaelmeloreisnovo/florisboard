@@ -63,3 +63,9 @@ debug/
 target/
 **/*.rs.bk
 *.pdb
+
+# Build reports and logs
+build_report.txt
+build_process.log
+apk_verification.log
+build_verification_report.md
