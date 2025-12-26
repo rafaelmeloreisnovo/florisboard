@@ -70,10 +70,10 @@
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # Remove logging for release builds (better performance and smaller size)
+# Keeping info-level logs for important application events
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);
-    public static *** i(...);
 }
 
 # Optimize Kotlin metadata

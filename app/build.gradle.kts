@@ -85,7 +85,7 @@ android {
             }
             
             // R8 full mode for maximum optimization
-            signingConfig = null // Will be configured externally
+            // Note: Signing must be configured externally via signing.properties or CI/CD
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -117,9 +117,6 @@ android {
         }
         animationsDisabled = true
     }
-    
-    // Enable resource prefix to avoid conflicts
-    resourcePrefix = "floris_"
 
     buildFeatures {
         compose = true
