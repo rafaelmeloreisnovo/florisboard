@@ -61,10 +61,16 @@ private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 @Suppress("unused")
 class FlorisApplication : Application() {
     companion object {
+        private const val TAG = "FlorisApplication"
+        
         init {
             try {
                 System.loadLibrary("fl_native")
-            } catch (_: Exception) {
+                Log.i(TAG, "Native library loaded successfully")
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e(TAG, "Failed to load native library: ${e.message}", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error loading native library: ${e.message}", e)
             }
         }
     }

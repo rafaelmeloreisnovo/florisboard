@@ -98,3 +98,28 @@
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
+
+# Keep custom exception handlers for crash reporting
+-keep class dev.patrickgold.florisboard.lib.crashutility.** { *; }
+
+# Keep reflection-based classes to prevent runtime crashes
+-keepclassmembers class * {
+    @androidx.annotation.Keep *;
+}
+
+# Keep WeakReference and related classes for memory management
+-keep class java.lang.ref.WeakReference { *; }
+-keep class java.lang.ref.SoftReference { *; }
+
+# Prevent crashes from missing R8 optimizations
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+
+# Keep InputMethodService classes
+-keep class * extends android.inputmethodservice.InputMethodService { *; }
+
+# Keep lifecycle owners for proper cleanup
+-keep class * implements androidx.lifecycle.LifecycleOwner {
+    *;
+}

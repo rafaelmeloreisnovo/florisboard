@@ -199,13 +199,19 @@ class FlorisImeService : LifecycleInputMethodService() {
                     return ims.switchToPreviousInputMethod()
                 } else {
                     ims.window.window?.let { window ->
-                        @Suppress("DEPRECATION")
-                        return imm?.switchToLastInputMethod(window.attributes.token) == true
+                        window.attributes?.token?.let { token ->
+                            @Suppress("DEPRECATION")
+                            return imm?.switchToLastInputMethod(token) == true
+                        }
                     }
                 }
             } catch (e: Exception) {
-                flogError { "Unable to switch to the previous IME" }
-                imm?.showInputMethodPicker()
+                flogError { "Unable to switch to the previous IME: ${e.message}" }
+                try {
+                    imm?.showInputMethodPicker()
+                } catch (ex: Exception) {
+                    flogError { "Failed to show IME picker: ${ex.message}" }
+                }
             }
             return false
         }
@@ -218,13 +224,19 @@ class FlorisImeService : LifecycleInputMethodService() {
                     return ims.switchToNextInputMethod(false)
                 } else {
                     ims.window.window?.let { window ->
-                        @Suppress("DEPRECATION")
-                        return imm?.switchToNextInputMethod(window.attributes.token, false) == true
+                        window.attributes?.token?.let { token ->
+                            @Suppress("DEPRECATION")
+                            return imm?.switchToNextInputMethod(token, false) == true
+                        }
                     }
                 }
             } catch (e: Exception) {
-                flogError { "Unable to switch to the next IME" }
-                imm?.showInputMethodPicker()
+                flogError { "Unable to switch to the next IME: ${e.message}" }
+                try {
+                    imm?.showInputMethodPicker()
+                } catch (ex: Exception) {
+                    flogError { "Failed to show IME picker: ${ex.message}" }
+                }
             }
             return false
         }
@@ -232,23 +244,42 @@ class FlorisImeService : LifecycleInputMethodService() {
         fun switchToVoiceInputMethod(): Boolean {
             val ims = FlorisImeServiceReference.get() ?: return false
             val imm = ims.systemServiceOrNull(InputMethodManager::class) ?: return false
-            val list: List<InputMethodInfo> = imm.enabledInputMethodList
-            for (el in list) {
-                for (i in 0 until el.subtypeCount) {
-                    if (el.getSubtypeAt(i).mode != "voice") continue
-                    if (AndroidVersion.ATLEAST_API28_P) {
-                        ims.switchInputMethod(el.id, el.getSubtypeAt(i))
-                        return true
-                    } else {
-                        ims.window.window?.let { window ->
-                            @Suppress("DEPRECATION")
-                            imm.setInputMethod(window.attributes.token, el.id)
-                            return true
+            
+            try {
+                val list: List<InputMethodInfo> = imm.enabledInputMethodList ?: emptyList()
+                for (el in list) {
+                    try {
+                        for (i in 0 until el.subtypeCount) {
+                            val subtype = el.getSubtypeAt(i)
+                            if (subtype?.mode != "voice") continue
+                            
+                            if (AndroidVersion.ATLEAST_API28_P) {
+                                ims.switchInputMethod(el.id, subtype)
+                                return true
+                            } else {
+                                ims.window.window?.let { window ->
+                                    window.attributes?.token?.let { token ->
+                                        @Suppress("DEPRECATION")
+                                        imm.setInputMethod(token, el.id)
+                                        return true
+                                    }
+                                }
+                            }
                         }
+                    } catch (e: Exception) {
+                        flogError { "Error checking subtype for ${el.id}: ${e.message}" }
+                        continue
                     }
                 }
+            } catch (e: Exception) {
+                flogError { "Failed to get enabled input methods: ${e.message}" }
             }
-            ims.showShortToastSync("Failed to find voice IME, do you have one installed?")
+            
+            try {
+                ims.showShortToastSync("Failed to find voice IME, do you have one installed?")
+            } catch (e: Exception) {
+                flogError { "Failed to show toast: ${e.message}" }
+            }
             return false
         }
     }
@@ -397,7 +428,11 @@ class FlorisImeService : LifecycleInputMethodService() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        themeManager.configurationChangeCounter.update { it + 1 }
+        try {
+            themeManager.configurationChangeCounter.update { it + 1 }
+        } catch (e: Exception) {
+            flogError { "Failed to update configuration counter: ${e.message}" }
+        }
     }
 
     override fun onDestroy() {
