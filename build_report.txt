@@ -1,0 +1,13 @@
+FlorisBoard ARM64 Build Report
+==============================
+Build Date: Fri Dec 26 04:02:50 UTC 2025
+Build Type: Release
+Architecture: arm64-v8a
+Output Directory: app/build/outputs/apk/release
+
+Generated APK(s):
+
+- File: app-release-unsigned.apk
+  Size: 15M
+  SHA256: fe2077a3755b49324ab903342cdc177eb477151dc64182a95f02e1eaa67e67d9
+  Path: app/build/outputs/apk/release/app-release-unsigned.apk
