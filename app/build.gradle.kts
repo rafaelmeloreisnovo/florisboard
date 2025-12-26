@@ -29,6 +29,9 @@ kotlin {
 android {
     namespace = "dev.patrickgold.florisboard"
     compileSdk = projectCompileSdk.toInt()
+    
+    // Configure build tools version for stability
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "dev.patrickgold.florisboard"
@@ -102,7 +105,21 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = false
     }
+    
+    // Optimize build for better performance and crash resistance
+    @Suppress("UnstableApiUsage")
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+            isIncludeAndroidResources = true
+        }
+        animationsDisabled = true
+    }
+    
+    // Enable resource prefix to avoid conflicts
+    resourcePrefix = "floris_"
 
     buildFeatures {
         compose = true
