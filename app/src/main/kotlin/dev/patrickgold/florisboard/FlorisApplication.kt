@@ -63,16 +63,29 @@ class FlorisApplication : Application() {
     companion object {
         private const val TAG = "FlorisApplication"
         
+        @Volatile
+        private var nativeLibraryLoaded = false
+        
         init {
             try {
                 System.loadLibrary("fl_native")
+                nativeLibraryLoaded = true
                 Log.i(TAG, "Native library loaded successfully")
             } catch (e: UnsatisfiedLinkError) {
-                Log.e(TAG, "Failed to load native library: ${e.message}", e)
+                Log.e(TAG, "Failed to load native library - missing or incompatible architecture: ${e.message}", e)
+                Log.e(TAG, "Native functionality will be disabled. Ensure the device ABI matches one of the supported ABIs in build.gradle.kts (arm64-v8a, armeabi-v7a, x86, x86_64) and verify the configured NDK version.")
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Security exception loading native library: ${e.message}", e)
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error loading native library: ${e.message}", e)
             }
         }
+        
+        /**
+         * Check if native library was loaded successfully.
+         * Use this before calling any native methods to avoid UnsatisfiedLinkError at runtime.
+         */
+        fun isNativeLibraryLoaded(): Boolean = nativeLibraryLoaded
     }
 
     private val mainHandler by lazy { Handler(mainLooper) }
@@ -109,7 +122,16 @@ class FlorisApplication : Application() {
                 Log.e(TAG, "Failed to initialize emoji compat", e)
             }
             
-            flogError { "dummy result: ${dummyAdd(3,4)}" }
+            // Test native library if loaded
+            if (isNativeLibraryLoaded()) {
+                try {
+                    flogError { "dummy result: ${dummyAdd(3,4)}" }
+                } catch (e: UnsatisfiedLinkError) {
+                    Log.e(TAG, "Native method call failed despite library load: ${e.message}", e)
+                }
+            } else {
+                flogError { "Native library not loaded, skipping native method test" }
+            }
 
             if (!UserManagerCompat.isUserUnlocked(this)) {
                 try {

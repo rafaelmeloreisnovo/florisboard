@@ -18,12 +18,24 @@ package org.florisboard.lib.kotlin
 
 import kotlin.reflect.KClass
 
+/**
+ * Gets the simple name of a class, handling Companion objects specially.
+ * For Companion objects, returns the name of the enclosing class.
+ * 
+ * @return The simple name of the class, or the enclosing class name for Companion objects.
+ *         Returns null if the class name cannot be determined.
+ */
 fun KClass<*>.simpleNameOrEnclosing(): String? {
-    return if (this.simpleName == "Companion") {
-        // Companion object => get the enclosing class
-        this.java.enclosingClass.simpleName
-    } else {
-        // Normal object => directly get class
-        this.simpleName
+    return try {
+        if (this.simpleName == "Companion") {
+            // Companion object => get the enclosing class
+            this.java.enclosingClass?.simpleName
+        } else {
+            // Normal object => directly get class
+            this.simpleName
+        }
+    } catch (e: Exception) {
+        // Handle cases where reflection fails (e.g., obfuscated code)
+        null
     }
 }
