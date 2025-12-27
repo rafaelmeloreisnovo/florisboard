@@ -8,6 +8,9 @@
     <!-- Permission needed to create notifications on devices running Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     
+    <!-- Permission to safely read shared media content on Android 13+ (API 33) for image clipboard import -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    
     <!-- Permission to access internet for extension downloads and updates -->
     <uses-permission android:name="android.permission.INTERNET"/>
     

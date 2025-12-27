@@ -57,10 +57,9 @@ android {
         }
 
         ndk {
-            // Enable ABI filters for consistent ARM64/ARM32 builds
-            // Matches the main app configuration for proper library inclusion
-            // Note: All ABIs must be included to prevent UnsatisfiedLinkError on different devices
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            // Restrict to arm64-v8a only; CI/build scripts validate only the Android 15 arm64 artifact and fail otherwise
+            // Requirement: ship an arm64-only release to avoid untested ABIs and shrink the attack surface
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
