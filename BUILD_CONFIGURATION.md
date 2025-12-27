@@ -20,6 +20,7 @@ The increased minimum SDK from 26 to 28 provides:
 ### Architecture Support
 - **Primary**: arm64-v8a (64-bit ARM)
 - **Optimized for**: Android 15 on arm64 devices
+ - **Packaging**: Only arm64-v8a libraries are shipped; 32-bit and x86 variants are removed to reduce attack surface and bundle size.
 
 ## Java and Kotlin Configuration
 

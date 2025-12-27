@@ -52,7 +52,7 @@ android {
         }
 
         ndk {
-            abiFilters.clear()
+            // Product requirement: deliver an Android 15 arm64-only build; other ABIs are intentionally omitted
             abiFilters += listOf("arm64-v8a")
         }
 
