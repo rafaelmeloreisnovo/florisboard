@@ -73,7 +73,7 @@ class FlorisApplication : Application() {
                 Log.i(TAG, "Native library loaded successfully")
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "Failed to load native library - missing or incompatible architecture: ${e.message}", e)
-                Log.e(TAG, "Native functionality will be disabled. Check ABI filters and NDK version.")
+                Log.e(TAG, "Native functionality will be disabled. Ensure the device ABI matches one of the supported ABIs in build.gradle.kts (arm64-v8a, armeabi-v7a, x86, x86_64) and verify the configured NDK version.")
             } catch (e: SecurityException) {
                 Log.e(TAG, "Security exception loading native library: ${e.message}", e)
             } catch (e: Exception) {

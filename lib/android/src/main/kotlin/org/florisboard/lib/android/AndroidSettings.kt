@@ -33,8 +33,13 @@ abstract class AndroidSettingsHelper(
             for (field in kClass.java.declaredFields) {
                 if (Modifier.isStatic(field.modifiers)) {
                     tryOrNull {
-                        // Make field accessible to handle both public and non-public fields
-                        field.isAccessible = true
+                        // Attempt to make the field accessible; skip if access cannot be granted
+                        try {
+                            field.isAccessible = true
+                        } catch (e: SecurityException) {
+                            // Skip fields that cannot be made accessible
+                            return@tryOrNull
+                        }
                         val value = field.get(null) as? String
                         if (value != null) {
                             put(field.name, value)
