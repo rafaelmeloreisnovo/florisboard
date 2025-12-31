@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -360,7 +361,12 @@ class FlorisImeService : LifecycleInputMethodService() {
         
         try {
             @Suppress("DEPRECATION") // We do not retrieve the wallpaper but only listen to changes
-            registerReceiver(wallpaperChangeReceiver, IntentFilter(Intent.ACTION_WALLPAPER_CHANGED))
+            ContextCompat.registerReceiver(
+                /* context = */ this,
+                /* receiver = */ wallpaperChangeReceiver,
+                /* filter = */ IntentFilter(Intent.ACTION_WALLPAPER_CHANGED),
+                /* flags = */ ContextCompat.RECEIVER_NOT_EXPORTED
+            )
         } catch (e: Exception) {
             flogError { "Failed to register wallpaper change receiver: ${e.message}" }
         }

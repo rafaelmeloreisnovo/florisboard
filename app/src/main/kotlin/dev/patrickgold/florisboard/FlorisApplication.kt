@@ -24,6 +24,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.core.os.UserManagerCompat
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -147,7 +148,12 @@ class FlorisApplication : Application() {
                 }
                 
                 try {
-                    registerReceiver(BootComplete(), IntentFilter(Intent.ACTION_USER_UNLOCKED))
+                    ContextCompat.registerReceiver(
+                        /* context = */ this,
+                        /* receiver = */ BootComplete(),
+                        /* filter = */ IntentFilter(Intent.ACTION_USER_UNLOCKED),
+                        /* flags = */ ContextCompat.RECEIVER_NOT_EXPORTED
+                    )
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to register boot completion receiver", e)
                 }
