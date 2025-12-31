@@ -22,9 +22,10 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Handler
 import android.util.Log
+import android.os.Handler
 import androidx.core.os.UserManagerCompat
+import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.clipboard.ClipboardManager
@@ -147,7 +148,12 @@ class FlorisApplication : Application() {
                 }
                 
                 try {
-                    registerReceiver(BootComplete(), IntentFilter(Intent.ACTION_USER_UNLOCKED))
+                    ContextCompat.registerReceiver(
+                        /* context = */ this,
+                        /* receiver = */ BootComplete(),
+                        /* filter = */ IntentFilter(Intent.ACTION_USER_UNLOCKED),
+                        /* flags = */ ContextCompat.RECEIVER_EXPORTED
+                    )
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to register boot completion receiver", e)
                 }
