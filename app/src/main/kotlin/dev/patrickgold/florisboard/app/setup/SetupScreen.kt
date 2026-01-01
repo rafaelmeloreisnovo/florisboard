@@ -55,7 +55,9 @@ import dev.patrickgold.jetpref.datastore.model.observeAsState
 import dev.patrickgold.jetpref.datastore.ui.PreferenceUiScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.lifecycle.repeatOnLifecycle
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.FlorisBulletSpacer
 import org.florisboard.lib.compose.FlorisStep
@@ -136,21 +138,31 @@ private fun FlorisScreenScope.content(
 
         // Below block allows to return from the system IME enabler activity
         // as soon as it gets selected.
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(200L)
-                val isEnabled = InputMethodUtils.isFlorisboardEnabled(context)
-                if (stepState.getCurrentAuto().value == Steps.EnableIme.id &&
-                    stepState.getCurrentManual().value == -1 &&
-                    !isFlorisBoardEnabled &&
-                    !isFlorisBoardSelected &&
-                    hasNotificationPermission == NotificationPermissionState.NOT_SET &&
-                    isEnabled
-                ) {
-                    context.launchActivity(FlorisAppActivity::class) {
-                        it.flags = (Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                            or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        // Lifecycle-aware with circuit breaker to prevent zombie loops on Android 15 ARM64
+        val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+        LaunchedEffect(lifecycleOwner) {
+            var iterations = 0
+            val maxIterations = 5000 // Circuit breaker to prevent infinite loops
+            
+            lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                while (isActive && iterations < maxIterations) {
+                    delay(250L) // Slightly longer delay for better battery efficiency
+                    iterations++
+                    
+                    val isEnabled = InputMethodUtils.isFlorisboardEnabled(context)
+                    if (stepState.getCurrentAuto().value == Steps.EnableIme.id &&
+                        stepState.getCurrentManual().value == -1 &&
+                        !isFlorisBoardEnabled &&
+                        !isFlorisBoardSelected &&
+                        hasNotificationPermission == NotificationPermissionState.NOT_SET &&
+                        isEnabled
+                    ) {
+                        context.launchActivity(FlorisAppActivity::class) {
+                            it.flags = (Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                                or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        }
+                        break // Exit after launching activity
                     }
                 }
             }

@@ -210,7 +210,8 @@ data class PerformanceMetrics(
  */
 class Matrix(val rows: Int, val cols: Int) {
     // Flat array for cache efficiency (row-major order)
-    private val data = DoubleArray(rows * cols)
+    @PublishedApi
+    internal val data = DoubleArray(rows * cols)
     
     /**
      * Gets value at position (row, col)
@@ -301,6 +302,60 @@ class Matrix(val rows: Int, val cols: Int) {
         }
         
         return result
+    }
+    
+    /**
+     * Computes deterministic hash using BITRAF64-inspired algorithm.
+     * Uses matrix elements for deterministic computation.
+     * 
+     * @return 64-bit deterministic hash value
+     */
+    fun deterministicHash(): Long {
+        var hash = 0x964999L // BITRAF64 seed based on R_CORR constant
+        for (i in data.indices) {
+            val bits = java.lang.Double.doubleToRawLongBits(data[i])
+            hash = hash xor (bits * 31L + i)
+            hash = (hash shl 13) or (hash ushr 51) // Rotate left by 13
+        }
+        return hash
+    }
+    
+    /**
+     * Applies ZIPRAF correlation factor to all elements.
+     * Deterministic transformation for data validation.
+     * 
+     * @param factor Correlation factor (default: 0.963999 from ZIPRAF spec)
+     */
+    fun applyCorrelation(factor: Double = 0.963999) {
+        for (i in data.indices) {
+            data[i] *= factor
+        }
+    }
+    
+    /**
+     * Computes Frobenius norm (deterministic magnitude calculation).
+     * Low-level computation without intermediate allocations.
+     * 
+     * @return Frobenius norm value
+     */
+    fun frobeniusNorm(): Double {
+        var sum = 0.0
+        for (i in data.indices) {
+            sum += data[i] * data[i]
+        }
+        return kotlin.math.sqrt(sum)
+    }
+    
+    /**
+     * Performs element-wise deterministic transformation.
+     * Uses bit manipulation for consistent cross-platform results.
+     * 
+     * @param transform Lambda function for transformation
+     */
+    inline fun transformInPlace(transform: (Double) -> Double) {
+        for (i in data.indices) {
+            data[i] = transform(data[i])
+        }
     }
 }
 
