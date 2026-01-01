@@ -31,10 +31,36 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.CoroutineScope
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Lifecycle-aware InputMethodService optimized for Android 15 ARM64 stability.
+ * 
+ * Key optimizations:
+ * - Thread-safe lifecycle state management using atomic operations
+ * - Defensive null checks for Android 15 window handling
+ * - Proper lifecycle event sequencing to prevent zombie states
+ * - Resource cleanup on destruction to prevent memory leaks
+ */
 open class LifecycleInputMethodService : InputMethodService(),
     LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner
 {
+    // Atomic state tracking for thread-safe lifecycle management
+    private val lifecycleState = AtomicInteger(STATE_INITIAL)
+    private val isDestroyed = AtomicBoolean(false)
+    
+    companion object {
+        // Deterministic state constants using bitwise values
+        private const val STATE_INITIAL = 0
+        private const val STATE_CREATED = 1
+        private const val STATE_STARTED = 2
+        private const val STATE_RESUMED = 3
+        private const val STATE_PAUSED = 4
+        private const val STATE_STOPPED = 5
+        private const val STATE_DESTROYED = 6
+    }
+    
     private val lifecycleRegistry by lazy { LifecycleRegistry(this) }
     private val store by lazy { ViewModelStore() }
     private val savedStateRegistryController by lazy { SavedStateRegistryController.create(this) }
@@ -54,13 +80,27 @@ open class LifecycleInputMethodService : InputMethodService(),
     @CallSuper
     override fun onCreate() {
         super.onCreate()
+        if (isDestroyed.get()) return
+        
         savedStateRegistryController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        
+        // Deterministic lifecycle event sequencing
+        if (lifecycleState.compareAndSet(STATE_INITIAL, STATE_CREATED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        }
+        if (lifecycleState.compareAndSet(STATE_CREATED, STATE_STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
     }
 
+    /**
+     * Installs view tree owners with defensive null handling for Android 15.
+     * Uses safe navigation to prevent NPE on window access.
+     */
     fun installViewTreeOwners() {
-        val decorView = window!!.window!!.decorView
+        if (isDestroyed.get()) return
+        
+        val decorView = window?.window?.decorView ?: return
         decorView.setViewTreeLifecycleOwner(this)
         decorView.setViewTreeViewModelStoreOwner(this)
         decorView.setViewTreeSavedStateRegistryOwner(this)
@@ -69,19 +109,75 @@ open class LifecycleInputMethodService : InputMethodService(),
     @CallSuper
     override fun onWindowShown() {
         super.onWindowShown()
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        if (isDestroyed.get()) return
+        
+        // Use loop with CAS for atomic state transition
+        while (true) {
+            val currentState = lifecycleState.get()
+            if (currentState >= STATE_STARTED && currentState < STATE_RESUMED) {
+                if (lifecycleState.compareAndSet(currentState, STATE_RESUMED)) {
+                    lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                    break
+                }
+                // CAS failed, retry with fresh state
+            } else if (currentState == STATE_PAUSED) {
+                if (lifecycleState.compareAndSet(STATE_PAUSED, STATE_RESUMED)) {
+                    lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                    break
+                }
+                // CAS failed, retry with fresh state
+            } else {
+                // State already resumed or invalid, no action needed
+                break
+            }
+        }
     }
 
     @CallSuper
     override fun onWindowHidden() {
         super.onWindowHidden()
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        if (isDestroyed.get()) return
+        
+        // Use CAS for atomic state transition
+        if (lifecycleState.compareAndSet(STATE_RESUMED, STATE_PAUSED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
     }
 
     @CallSuper
     override fun onDestroy() {
-        super.onDestroy()
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        // Mark as destroyed first to prevent concurrent operations
+        if (!isDestroyed.compareAndSet(false, true)) {
+            super.onDestroy()
+            return
+        }
+        
+        // Use loop with CAS for atomic state transitions
+        while (true) {
+            val currentState = lifecycleState.get()
+            
+            // Handle proper state transitions based on current state
+            if (currentState == STATE_RESUMED) {
+                if (lifecycleState.compareAndSet(STATE_RESUMED, STATE_PAUSED)) {
+                    lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+                    // Continue to stop state
+                }
+            } else if (currentState >= STATE_STARTED && currentState < STATE_STOPPED) {
+                if (lifecycleState.compareAndSet(currentState, STATE_STOPPED)) {
+                    lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+                    break
+                }
+            } else {
+                break
+            }
+        }
+        
+        lifecycleState.set(STATE_DESTROYED)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        
+        // Clear ViewModelStore to release resources
+        store.clear()
+        
+        super.onDestroy()
     }
 }

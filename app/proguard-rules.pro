@@ -22,6 +22,9 @@
 # Keep JNI classes from lib.native module to prevent runtime crashes
 -keep class org.florisboard.libnative.** { *; }
 
+# Keep ZIPRAF-OMEGA classes for deterministic calculations
+-keep class org.florisboard.lib.zipraf.** { *; }
+
 # Keep Android components to prevent lifecycle crashes
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Service
@@ -72,6 +75,12 @@
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
+# Android 15 ARM64: Keep atomic classes for thread-safe state management
+-keep class java.util.concurrent.atomic.** { *; }
+-keepclassmembers class * {
+    volatile <fields>;
+}
+
 # Remove logging for release builds (better performance and smaller size)
 # Keeping info-level logs for important application events
 -assumenosideeffects class android.util.Log {
@@ -96,8 +105,6 @@
 # Keep IME service classes to prevent keyboard crashes
 -keep class dev.patrickgold.florisboard.FlorisImeService { *; }
 -keep class dev.patrickgold.florisboard.FlorisSpellCheckerService { *; }
-
-# (Service subclasses are already fully kept by the rule at line 32.)
 
 # Keep Parcelable implementations
 -keep class * implements android.os.Parcelable {
@@ -128,3 +135,8 @@
 -keep class * implements androidx.lifecycle.LifecycleOwner {
     *;
 }
+
+# Android 15 ARM64: Keep LifecycleRegistry for proper state management
+-keep class androidx.lifecycle.LifecycleRegistry { *; }
+-keep class androidx.lifecycle.ViewModelStore { *; }
+-keep class androidx.savedstate.SavedStateRegistryController { *; }
