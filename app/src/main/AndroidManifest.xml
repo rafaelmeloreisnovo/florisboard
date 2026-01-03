@@ -59,7 +59,7 @@
         android:hardwareAccelerated="true"
         android:largeHeap="true"
         android:usesCleartextTraffic="false"
-        tools:targetApi="tiramisu">
+        tools:targetApi="vanilla_ice_cream">
 
         <!-- Allow app to be profiled for benchmarking and baseline profile generation -->
         <profileable android:shell="true"/>
