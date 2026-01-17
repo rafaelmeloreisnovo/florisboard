@@ -91,9 +91,10 @@ class RiskMitigationModuleTest {
     
     @Test
     fun `test process registration`() {
-        module.registerProcess("proc1", "TestProcess")
+        val registered = module.registerProcess("proc1", "TestProcess")
         
         val metrics = module.getMetrics()
+        assertTrue(registered)
         assertEquals(1L, metrics["active_processes"])
     }
     
@@ -162,6 +163,20 @@ class RiskMitigationModuleTest {
         val redundant = module.detectRedundancy(data)
         
         assertTrue(redundant.isEmpty())
+    }
+
+    @Test
+    fun `test process limit enforcement`() {
+        val registrations = (1..32).map { index ->
+            module.registerProcess("proc$index", "Process$index")
+        }
+
+        assertTrue(registrations.all { it })
+        assertFalse(module.registerProcess("proc33", "Process33"))
+
+        val metrics = module.getMetrics()
+        assertEquals(32L, metrics["active_processes"])
+        assertEquals(1L, metrics["process_limit_breaches"])
     }
     
     @Test

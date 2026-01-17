@@ -40,7 +40,8 @@ enum class RiskType {
     ZOMBIE_PROCESS,
     MEMORY_LEAK,
     DEADLOCK,
-    RACE_CONDITION
+    RACE_CONDITION,
+    RESOURCE_LIMIT
 }
 
 /**
@@ -115,7 +116,7 @@ data class ZombieProcess(
  * Implements continuous monitoring with configurable intervals.
  */
 class RiskMitigationModule {
-    
+
     // Latency tracking
     private val latencyMeasurements = ConcurrentHashMap<String, MutableList<LatencyMeasurement>>()
     private val latencyThresholds = ConcurrentHashMap<String, Long>()
@@ -123,6 +124,9 @@ class RiskMitigationModule {
     // Process tracking for zombie detection
     private val activeProcesses = ConcurrentHashMap<String, ZombieProcess>()
     private val zombieDetectionThresholdMs = 300_000L // 5 minutes of inactivity
+    private val maxActiveProcesses = 32
+    private val taskParallelism = 24
+    private val taskDispatcher = Dispatchers.Default.limitedParallelism(taskParallelism)
     
     // Metrics
     private val bugsDetected = AtomicLong(0)
@@ -130,6 +134,7 @@ class RiskMitigationModule {
     private val fragmentationEvents = AtomicLong(0)
     private val redundanciesFound = AtomicLong(0)
     private val zombiesDetected = AtomicLong(0)
+    private val processLimitBreaches = AtomicLong(0)
     
     // State flow for real-time monitoring
     private val _riskEvents = MutableSharedFlow<RiskDetectionResult>(replay = 10)
@@ -267,7 +272,24 @@ class RiskMitigationModule {
      * @param processId Unique identifier for the process
      * @param processName Human-readable name
      */
-    fun registerProcess(processId: String, processName: String) {
+    fun registerProcess(processId: String, processName: String): Boolean {
+        if (activeProcesses.size >= maxActiveProcesses) {
+            processLimitBreaches.incrementAndGet()
+            _riskEvents.tryEmit(
+                RiskDetectionResult(
+                    riskType = RiskType.RESOURCE_LIMIT.name,
+                    severity = RiskSeverity.HIGH.name,
+                    detected = true,
+                    description = "Process limit reached: $maxActiveProcesses active processes",
+                    mitigation = "Reduce concurrent processes or defer task execution",
+                    metrics = mapOf(
+                        "max_active_processes" to maxActiveProcesses.toDouble(),
+                        "active_processes" to activeProcesses.size.toDouble()
+                    )
+                )
+            )
+            return false
+        }
         val now = System.currentTimeMillis()
         activeProcesses[processId] = ZombieProcess(
             processId = processId,
@@ -277,6 +299,7 @@ class RiskMitigationModule {
             idleTimeMs = 0,
             isZombie = false
         )
+        return true
     }
     
     /**
@@ -402,6 +425,7 @@ class RiskMitigationModule {
             "fragmentation_events" to fragmentationEvents.get(),
             "redundancies_found" to redundanciesFound.get(),
             "zombies_detected" to zombiesDetected.get(),
+            "process_limit_breaches" to processLimitBreaches.get(),
             "active_processes" to activeProcesses.size.toLong(),
             "latency_measurements" to latencyMeasurements.values.sumOf { it.size }.toLong()
         )
@@ -432,7 +456,7 @@ class RiskMitigationModule {
         scope: CoroutineScope,
         intervalMs: Long = 60_000L
     ): Job {
-        return scope.launch {
+        return scope.launch(taskDispatcher) {
             while (isActive) {
                 // Check fragmentation
                 checkFragmentation()
@@ -457,7 +481,32 @@ class RiskMitigationModule {
         fragmentationEvents.set(0)
         redundanciesFound.set(0)
         zombiesDetected.set(0)
+        processLimitBreaches.set(0)
         latencyMeasurements.clear()
         activeProcesses.clear()
+    }
+
+    /**
+     * Execute a task using the bounded thread pool and registered process tracking.
+     *
+     * @param processId Unique identifier for the process
+     * @param processName Human-readable name
+     * @param task The task to execute
+     * @return Task result or null if execution was rejected due to process limit
+     */
+    suspend fun <T> runTaskAsProcess(
+        processId: String,
+        processName: String,
+        task: suspend () -> T
+    ): T? {
+        if (!registerProcess(processId, processName)) {
+            return null
+        }
+
+        return try {
+            withContext(taskDispatcher) { task() }
+        } finally {
+            unregisterProcess(processId)
+        }
     }
 }
