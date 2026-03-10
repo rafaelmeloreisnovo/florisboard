@@ -32,9 +32,13 @@ import org.florisboard.lib.android.systemService
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("MemberVisibilityCanBePrivate")
 object Devtools {
+    private val logcatDumpInProgress = AtomicBoolean(false)
+
     fun generateDebugLog(context: Context, prefs: FlorisPreferenceModel? = null, includeLogcat: Boolean = false): String {
         return buildString {
             append(generateDebugLogHeader(context, prefs))
@@ -153,15 +157,28 @@ object Devtools {
     fun generateLogcatDump(withTitle: Boolean = true): String {
         return buildString {
             if (withTitle) appendLine("======= LOGCAT =======")
+            if (!logcatDumpInProgress.compareAndSet(false, true)) {
+                appendLine("Skipped: another logcat dump is already in progress.")
+                return@buildString
+            }
+            var process: Process? = null
             try {
-                val process = Runtime.getRuntime().exec("logcat -d")
+                process = ProcessBuilder("logcat", "-d", "-t", "1200")
+                    .redirectErrorStream(true)
+                    .start()
                 val bufferedReader = BufferedReader(InputStreamReader(process.inputStream))
                 var line: String?
                 while (bufferedReader.readLine().also { line = it } != null) {
                     appendLine(line)
                 }
+                if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                    process.destroy()
+                }
             } catch (_: IOException) {
                 appendLine("Failed to retrieve.")
+            } finally {
+                process?.destroy()
+                logcatDumpInProgress.set(false)
             }
         }
     }
