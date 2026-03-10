@@ -33,8 +33,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +51,7 @@ import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.compose.FlorisScreenScope
+import dev.patrickgold.florisboard.lib.util.BatteryOptimizationUtils
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import dev.patrickgold.florisboard.lib.util.launchUrl
@@ -214,6 +218,22 @@ private fun PreferenceUiScope<FlorisPreferenceModel>.steps(
     requestNotification: ManagedActivityResultLauncher<String, Boolean>,
     scope: CoroutineScope,
 ): List<FlorisStep> {
+    var isIgnoringBatteryOptimizations by remember {
+        mutableStateOf(BatteryOptimizationUtils.isIgnoringBatteryOptimizations(context))
+    }
+
+    LaunchedEffect(context) {
+        while (isActive) {
+            isIgnoringBatteryOptimizations = BatteryOptimizationUtils.isIgnoringBatteryOptimizations(context)
+            delay(1000L)
+        }
+    }
+
+    val batteryOptimizationStatusText = if (isIgnoringBatteryOptimizations) {
+        stringRes(R.string.setup__battery_optimization__status_ignored)
+    } else {
+        stringRes(R.string.setup__battery_optimization__status_optimized)
+    }
 
     return listOfNotNull(
         FlorisStep(
@@ -251,6 +271,12 @@ private fun PreferenceUiScope<FlorisPreferenceModel>.steps(
         ) {
             StepText(stringRes(R.string.setup__finish_up__description_p1))
             StepText(stringRes(R.string.setup__finish_up__description_p2))
+            StepText(stringRes(R.string.setup__battery_optimization__title))
+            StepText(stringRes(R.string.setup__battery_optimization__status, "status" to batteryOptimizationStatusText))
+            StepText(stringRes(R.string.setup__battery_optimization__oem_guidance))
+            StepButton(label = stringRes(R.string.setup__battery_optimization__open_settings_btn)) {
+                BatteryOptimizationUtils.openBatteryOptimizationSettings(context)
+            }
             StepButton(label = stringRes(R.string.setup__finish_up__finish_btn)) {
                 scope.launch { this@steps.prefs.internal.isImeSetUp.set(true) }
                 navController.navigate(Routes.Settings.Home) {
