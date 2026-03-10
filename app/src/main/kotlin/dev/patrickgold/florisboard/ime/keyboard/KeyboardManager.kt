@@ -85,6 +85,15 @@ import java.util.concurrent.atomic.AtomicInteger
 private val DoubleSpacePeriodMatcher = """([^.!?‽\s]\s)""".toRegex()
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
+    data class RuntimeStateSnapshot(
+        val imeUiMode: Int,
+        val keyboardMode: Int,
+        val activeSubtypeId: Long,
+        val isActionsOverflowVisible: Boolean,
+        val isActionsEditorVisible: Boolean,
+        val isSubtypeSelectionVisible: Boolean,
+    )
+
     private val prefs by FlorisPreferenceStore
     private val appContext by context.appContext()
     private val clipboardManager by context.clipboardManager()
@@ -222,6 +231,29 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 else -> InputShiftState.UNSHIFTED
             }
         }
+    }
+
+    fun createRuntimeStateSnapshot(): RuntimeStateSnapshot {
+        val state = activeState.snapshot()
+        return RuntimeStateSnapshot(
+            imeUiMode = state.imeUiMode.toInt(),
+            keyboardMode = state.keyboardMode.toInt(),
+            activeSubtypeId = subtypeManager.activeSubtype.id,
+            isActionsOverflowVisible = state.isActionsOverflowVisible,
+            isActionsEditorVisible = state.isActionsEditorVisible,
+            isSubtypeSelectionVisible = state.isSubtypeSelectionVisible,
+        )
+    }
+
+    fun restoreRuntimeStateSnapshot(snapshot: RuntimeStateSnapshot) {
+        activeState.batchEdit {
+            activeState.imeUiMode = ImeUiMode.fromInt(snapshot.imeUiMode)
+            activeState.keyboardMode = KeyboardMode.fromInt(snapshot.keyboardMode)
+            activeState.isActionsOverflowVisible = snapshot.isActionsOverflowVisible
+            activeState.isActionsEditorVisible = snapshot.isActionsEditorVisible
+            activeState.isSubtypeSelectionVisible = snapshot.isSubtypeSelectionVisible
+        }
+        subtypeManager.switchToSubtypeById(snapshot.activeSubtypeId)
     }
 
     fun resetSuggestions(content: EditorContent) {
