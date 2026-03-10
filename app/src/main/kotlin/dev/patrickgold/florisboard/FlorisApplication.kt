@@ -150,12 +150,12 @@ class FlorisApplication : Application() {
                 try {
                     ContextCompat.registerReceiver(
                         /* context = */ this,
-                        /* receiver = */ BootComplete(),
+                        /* receiver = */ UserUnlockedReceiver(),
                         /* filter = */ IntentFilter(Intent.ACTION_USER_UNLOCKED),
                         /* flags = */ ContextCompat.RECEIVER_NOT_EXPORTED
                     )
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to register boot completion receiver", e)
+                    Log.e(TAG, "Failed to register user unlock receiver", e)
                 }
                 return
             }
@@ -210,7 +210,15 @@ class FlorisApplication : Application() {
         }
     }
 
-    private inner class BootComplete : BroadcastReceiver() {
+    /**
+     * Dynamic receiver used only while direct-boot locked.
+     *
+     * We intentionally do not use BOOT_COMPLETED here because this app does not
+     * need process start at device boot. Initialization happens when the app process
+     * is created, and if the credential-encrypted storage is still locked we wait for
+     * ACTION_USER_UNLOCKED to safely run init().
+     */
+    private inner class UserUnlockedReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
             if (intent.action == Intent.ACTION_USER_UNLOCKED) {

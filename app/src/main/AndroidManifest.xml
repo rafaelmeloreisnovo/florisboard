@@ -17,8 +17,7 @@
     <!-- Permission to check network state for better error handling -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
-    <!-- Permission to receive boot completed for initialization -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- No BOOT_COMPLETED receiver is declared: initialization is deferred until app process start/user unlock -->
     
     <!-- Declare support for different screen sizes and densities -->
     <supports-screens
