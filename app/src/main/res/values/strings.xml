@@ -564,6 +564,13 @@
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Settings language</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Show app icon in launcher</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">Always enabled on Android 10+ due to restrictions of the system</string>
+    <string name="settings__other__battery_optimization__title">Battery optimization diagnosis</string>
+    <string name="settings__other__battery_optimization__status_title">Optimization status</string>
+    <string name="settings__other__battery_optimization__status_summary">Current status: {status}</string>
+    <string name="settings__other__battery_optimization__status_ignored">Not optimized</string>
+    <string name="settings__other__battery_optimization__status_optimized">Optimized by system</string>
+    <string name="settings__other__battery_optimization__oem_guidance_title">OEM guidance (Xiaomi, Samsung, Oppo, Realme, Vivo)</string>
+    <string name="general__battery_optimization__settings_not_available">Battery optimization settings are not available on this device.</string>
 
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">About</string>
@@ -614,6 +621,12 @@
     <string name="setup__finish_up__title">Finish Up</string>
     <string name="setup__finish_up__description_p1">{app_name} is now enabled in the system and ready to be customized by you.</string>
     <string name="setup__finish_up__description_p2">If you encounter any issues, bugs, crashes or just want to make a suggestion, check out the project repository from the about screen!</string>
+    <string name="setup__battery_optimization__title">Battery optimization</string>
+    <string name="setup__battery_optimization__status">Current status: {status}</string>
+    <string name="setup__battery_optimization__status_ignored">Not optimized (recommended for keyboard reliability)</string>
+    <string name="setup__battery_optimization__status_optimized">Optimized by system (may interrupt background keyboard tasks)</string>
+    <string name="setup__battery_optimization__open_settings_btn">Open battery optimization settings</string>
+    <string name="setup__battery_optimization__oem_guidance">OEM guidance: On Xiaomi/MIUI, disable battery saver restrictions and allow autostart for {app_name}. On Samsung One UI, set battery usage to Unrestricted. On Oppo/Realme/Vivo, look for auto-launch and background activity controls and allow {app_name}.</string>
     <string name="setup__finish_up__finish_btn">Start Customizing</string>
 
     <!-- Physical keyboard -->

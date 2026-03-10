@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +40,7 @@ import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.lib.FlorisLocale
+import dev.patrickgold.florisboard.lib.util.BatteryOptimizationUtils
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.observeAsState
 import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
@@ -44,6 +48,8 @@ import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import dev.patrickgold.jetpref.datastore.ui.isMaterialYou
 import dev.patrickgold.jetpref.datastore.ui.listPrefEntries
 import org.florisboard.lib.android.AndroidVersion
@@ -58,6 +64,23 @@ fun OtherScreen() = FlorisScreen {
 
     val navController = LocalNavController.current
     val context = LocalContext.current
+
+    var isIgnoringBatteryOptimizations by remember {
+        mutableStateOf(BatteryOptimizationUtils.isIgnoringBatteryOptimizations(context))
+    }
+
+    androidx.compose.runtime.LaunchedEffect(context) {
+        while (isActive) {
+            isIgnoringBatteryOptimizations = BatteryOptimizationUtils.isIgnoringBatteryOptimizations(context)
+            delay(1000L)
+        }
+    }
+
+    val batteryOptimizationStatus = if (isIgnoringBatteryOptimizations) {
+        stringRes(R.string.settings__other__battery_optimization__status_ignored)
+    } else {
+        stringRes(R.string.settings__other__battery_optimization__status_optimized)
+    }
 
     content {
         ListPreference(
@@ -166,6 +189,21 @@ fun OtherScreen() = FlorisScreen {
             title = stringRes(R.string.devtools__title),
             onClick = { navController.navigate(Routes.Devtools.Home) },
         )
+
+        PreferenceGroup(title = stringRes(R.string.settings__other__battery_optimization__title)) {
+            Preference(
+                icon = Icons.Default.SettingsBackupRestore,
+                title = stringRes(R.string.settings__other__battery_optimization__status_title),
+                summary = stringRes(R.string.settings__other__battery_optimization__status_summary, "status" to batteryOptimizationStatus),
+                onClick = { BatteryOptimizationUtils.openBatteryOptimizationSettings(context) },
+            )
+            Preference(
+                icon = Icons.Default.Preview,
+                title = stringRes(R.string.settings__other__battery_optimization__oem_guidance_title),
+                summary = stringRes(R.string.setup__battery_optimization__oem_guidance),
+                onClick = { BatteryOptimizationUtils.openBatteryOptimizationSettings(context) },
+            )
+        }
 
         PreferenceGroup(title = stringRes(R.string.backup_and_restore__title)) {
             Preference(
