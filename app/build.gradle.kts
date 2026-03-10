@@ -14,6 +14,8 @@ plugins {
 val projectMinSdk: String by project
 val projectTargetSdk: String by project
 val projectCompileSdk: String by project
+val projectVersionCode: String by project
+val projectVersionName: String by project
 val jdkVersion = tools.versions.jdk.get().toInt()
 val javaVersion = JavaVersion.toVersion(jdkVersion)
 
