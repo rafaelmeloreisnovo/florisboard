@@ -77,6 +77,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.ImeStateSnapshotStore
 import dev.patrickgold.florisboard.app.devtools.DevtoolsOverlay
 import dev.patrickgold.florisboard.ime.ImeUiMode
 import dev.patrickgold.florisboard.ime.clipboard.ClipboardInputLayout
@@ -302,6 +303,8 @@ class FlorisImeService : LifecycleInputMethodService() {
     private var resourcesContext by mutableStateOf(this as Context)
 
     private val wallpaperChangeReceiver = WallpaperChangeReceiver()
+    private val imeStateSnapshotStore by lazy { ImeStateSnapshotStore(this) }
+    private var didRestoreImeStateSnapshot = false
 
     init {
         setTheme(R.style.FlorisImeTheme)
@@ -310,6 +313,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     override fun onCreate() {
         super.onCreate()
         FlorisImeServiceReference = WeakReference(this)
+        restoreRuntimeStateSnapshotIfAvailable()
         
         try {
             window.window?.let { win ->
@@ -469,6 +473,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         flogInfo { "restarting=$restarting info=${info?.debugSummarize()}" }
         super.onStartInputView(info, restarting)
+        restoreRuntimeStateSnapshotIfAvailable()
         if (info == null) return
         val editorInfo = FlorisEditorInfo.wrap(info)
         activeState.batchEdit {
@@ -518,6 +523,7 @@ class FlorisImeService : LifecycleInputMethodService() {
         super.onFinishInput()
         editorInstance.handleFinishInput()
         NlpInlineAutofill.clearInlineSuggestions()
+        persistRuntimeStateSnapshot()
     }
 
     override fun onWindowShown() {
@@ -533,6 +539,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onWindowHidden() {
+        persistRuntimeStateSnapshot()
         super.onWindowHidden()
         if (!isWindowShown) {
             flogWarning(LogTopic.IMS_EVENTS) { "Ignoring (is already hidden)" }
@@ -546,6 +553,24 @@ class FlorisImeService : LifecycleInputMethodService() {
             activeState.isActionsOverflowVisible = false
             activeState.isActionsEditorVisible = false
         }
+    }
+
+
+    private fun persistRuntimeStateSnapshot() {
+        imeStateSnapshotStore.save(keyboardManager.createRuntimeStateSnapshot())
+    }
+
+    private fun restoreRuntimeStateSnapshotIfAvailable() {
+        if (didRestoreImeStateSnapshot) {
+            return
+        }
+        didRestoreImeStateSnapshot = true
+        val snapshot = imeStateSnapshotStore.restore() ?: return
+        if (subtypeManager.getSubtypeById(snapshot.activeSubtypeId) == null) {
+            imeStateSnapshotStore.clear()
+            return
+        }
+        keyboardManager.restoreRuntimeStateSnapshot(snapshot)
     }
 
     override fun onEvaluateFullscreenMode(): Boolean {
