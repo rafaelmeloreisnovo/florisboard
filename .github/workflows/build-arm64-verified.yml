@@ -2,13 +2,13 @@ name: Build and Verify ARM64 APK
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - 'copilot/**'
-      - 'stabilize/**'
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
