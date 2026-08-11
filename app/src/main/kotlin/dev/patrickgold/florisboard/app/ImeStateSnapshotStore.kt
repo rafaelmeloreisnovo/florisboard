@@ -38,33 +38,39 @@ class ImeStateSnapshotStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun save(snapshot: KeyboardManager.RuntimeStateSnapshot, nowMs: Long = System.currentTimeMillis()) {
-        prefs.edit()
-            .putInt(KEY_VERSION, SNAPSHOT_VERSION)
-            .putLong(KEY_CREATED_AT, nowMs)
-            .putInt(KEY_IME_UI_MODE, snapshot.imeUiMode)
-            .putInt(KEY_KEYBOARD_MODE, snapshot.keyboardMode)
-            .putLong(KEY_ACTIVE_SUBTYPE_ID, snapshot.activeSubtypeId)
-            .putBoolean(KEY_IS_ACTIONS_OVERFLOW_VISIBLE, snapshot.isActionsOverflowVisible)
-            .putBoolean(KEY_IS_ACTIONS_EDITOR_VISIBLE, snapshot.isActionsEditorVisible)
-            .putBoolean(KEY_IS_SUBTYPE_SELECTION_VISIBLE, snapshot.isSubtypeSelectionVisible)
-            .apply()
+        try {
+            prefs.edit()
+                .putInt(KEY_VERSION, SNAPSHOT_VERSION)
+                .putLong(KEY_CREATED_AT, nowMs)
+                .putInt(KEY_IME_UI_MODE, snapshot.imeUiMode)
+                .putInt(KEY_KEYBOARD_MODE, snapshot.keyboardMode)
+                .putLong(KEY_ACTIVE_SUBTYPE_ID, snapshot.activeSubtypeId)
+                .putBoolean(KEY_IS_ACTIONS_OVERFLOW_VISIBLE, snapshot.isActionsOverflowVisible)
+                .putBoolean(KEY_IS_ACTIONS_EDITOR_VISIBLE, snapshot.isActionsEditorVisible)
+                .putBoolean(KEY_IS_SUBTYPE_SELECTION_VISIBLE, snapshot.isSubtypeSelectionVisible)
+                .apply()
+        } catch (_: RuntimeException) {
+            // Snapshot persistence is an optimization. Never crash the IME because the
+            // preference backend is unavailable or contains an incompatible state.
+            clearSafely()
+        }
     }
 
     fun restore(nowMs: Long = System.currentTimeMillis()): KeyboardManager.RuntimeStateSnapshot? {
         return try {
             val version = prefs.getInt(KEY_VERSION, -1)
             if (version != SNAPSHOT_VERSION) {
-                clear()
+                clearSafely()
                 return null
             }
             val createdAt = prefs.getLong(KEY_CREATED_AT, 0L)
             if (createdAt <= 0L || nowMs < createdAt || nowMs - createdAt > SNAPSHOT_TTL_MS) {
-                clear()
+                clearSafely()
                 return null
             }
             val activeSubtypeId = prefs.getLong(KEY_ACTIVE_SUBTYPE_ID, 0L)
             if (activeSubtypeId <= 0L) {
-                clear()
+                clearSafely()
                 return null
             }
             KeyboardManager.RuntimeStateSnapshot(
@@ -78,12 +84,23 @@ class ImeStateSnapshotStore(context: Context) {
         } catch (_: ClassCastException) {
             // SharedPreferences throws when an old/corrupted key has a different primitive type.
             // A runtime snapshot is an optimization only, so invalid data must fail closed to defaults.
-            clear()
+            clearSafely()
+            null
+        } catch (_: RuntimeException) {
+            // Storage/backend failures must not take down the input method service.
             null
         }
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        clearSafely()
+    }
+
+    private fun clearSafely() {
+        try {
+            prefs.edit().clear().apply()
+        } catch (_: RuntimeException) {
+            // Nothing else to do: absence of a snapshot is the safe default.
+        }
     }
 }
