@@ -39,6 +39,7 @@ import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.crashutility.CrashUtility
+import dev.patrickgold.florisboard.lib.crashutility.HandledFaultRecorder
 import dev.patrickgold.florisboard.lib.devtools.Flog
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogError
@@ -163,7 +164,7 @@ class FlorisApplication : Application() {
             init()
         } catch (e: Exception) {
             Log.e(TAG, "Critical error during onCreate", e)
-            CrashUtility.stageException(e)
+            HandledFaultRecorder.record(this, "application_on_create", e)
             return
         }
     }
@@ -186,7 +187,7 @@ class FlorisApplication : Application() {
                 preferenceStoreLoaded.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize preference store", e)
-                CrashUtility.stageException(e)
+                HandledFaultRecorder.record(this@FlorisApplication, "preference_store_init", e)
                 // Fail closed: consumers must never interpret a failed datastore init as ready.
                 preferenceStoreLoaded.value = false
             }
