@@ -25,18 +25,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
 
-      - name: Make scripts executable
+      - name: Make build scripts executable
         run: |
+          set -euo pipefail
           chmod +x ./gradlew
           chmod +x ./build_unsigned.sh
           chmod +x ./build_and_verify_arm64.sh
-          chmod +x ./scripts/setup_rust_env.sh
 
       - name: Resolve canonical toolchain versions
         id: toolchain
@@ -135,10 +135,13 @@ jobs:
           target: aarch64-linux-android
           cache: true
 
-      - name: Configure Rust Android environment
-        env:
-          RUST_ANDROID_TARGET: aarch64-linux-android
-        run: ./scripts/setup_rust_env.sh
+      - name: Verify Rust Android target
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustc --version
+          cargo --version
+          rustup target list --installed | grep -Fx 'aarch64-linux-android'
 
       - name: Show environment info
         shell: bash
@@ -146,8 +149,6 @@ jobs:
           set -euo pipefail
           java -version
           ./gradlew --version
-          rustc --version
-          cargo --version
           sdkmanager --version
           test -d "$ANDROID_SDK_ROOT/ndk/${{ steps.toolchain.outputs.ndk }}"
           test -d "$ANDROID_SDK_ROOT/cmake/${{ steps.toolchain.outputs.cmake }}"
