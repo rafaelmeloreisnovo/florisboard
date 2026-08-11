@@ -6,13 +6,12 @@ on:
       - main
       - master
       - 'copilot/**'
+      - 'stabilize/**'
   pull_request:
   workflow_dispatch:
 
 env:
-  ANDROID_SDK_ROOT: /usr/local/share/android-sdk
-  BUILD_TOOLS_VERSION: '35.0.0'
-  PLATFORM_VERSION: 'android-36'
+  ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
 jobs:
   build-and-verify:
@@ -20,7 +19,7 @@ jobs:
     permissions:
       contents: read
       actions: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,74 +36,136 @@ jobs:
           chmod +x ./gradlew
           chmod +x ./build_unsigned.sh
           chmod +x ./build_and_verify_arm64.sh
+          chmod +x ./scripts/setup_rust_env.sh
 
-      - name: Install Android SDK command-line tools (with retry)
+      - name: Resolve canonical toolchain versions
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          read_toml_version() {
+            local key="$1"
+            sed -nE "s/^${key}[[:space:]]*=[[:space:]]*\"([^\"]+)\"/\1/p" gradle/tools.versions.toml | head -n1
+          }
+          BUILD_TOOLS_VERSION="$(read_toml_version buildTools)"
+          CMAKE_VERSION="$(read_toml_version cmake)"
+          NDK_VERSION="$(read_toml_version ndk)"
+          RUST_TOOLCHAIN="$(read_toml_version rustToolchain)"
+          CMDLINE_TOOLS_VERSION="$(read_toml_version cmdlineTools)"
+          CMDLINE_TOOLS_CHECKSUM="$(read_toml_version cmdlineToolsChecksum)"
+          COMPILE_SDK="$(sed -n 's/^projectCompileSdk=//p' gradle.properties | head -n1)"
+
+          for value in BUILD_TOOLS_VERSION CMAKE_VERSION NDK_VERSION RUST_TOOLCHAIN CMDLINE_TOOLS_VERSION CMDLINE_TOOLS_CHECKSUM COMPILE_SDK; do
+            if [ -z "${!value}" ]; then
+              echo "Missing canonical toolchain value: $value" >&2
+              exit 1
+            fi
+          done
+
+          {
+            echo "build_tools=$BUILD_TOOLS_VERSION"
+            echo "cmake=$CMAKE_VERSION"
+            echo "ndk=$NDK_VERSION"
+            echo "rust=$RUST_TOOLCHAIN"
+            echo "cmdline_tools=$CMDLINE_TOOLS_VERSION"
+            echo "cmdline_tools_checksum=$CMDLINE_TOOLS_CHECKSUM"
+            echo "compile_sdk=$COMPILE_SDK"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install Android SDK toolchain (fail closed)
         shell: bash
         env:
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          BUILD_TOOLS_VERSION: ${{ steps.toolchain.outputs.build_tools }}
+          CMAKE_VERSION: ${{ steps.toolchain.outputs.cmake }}
+          NDK_VERSION: ${{ steps.toolchain.outputs.ndk }}
+          CMDLINE_TOOLS_VERSION: ${{ steps.toolchain.outputs.cmdline_tools }}
+          CMDLINE_TOOLS_CHECKSUM: ${{ steps.toolchain.outputs.cmdline_tools_checksum }}
+          COMPILE_SDK: ${{ steps.toolchain.outputs.compile_sdk }}
         run: |
           set -euo pipefail
-          attempts=0
-          max_attempts=3
-          until [ "$attempts" -ge "$max_attempts" ]
-          do
-            attempts=$((attempts+1))
-            echo "SDK install attempt $attempts/$max_attempts"
-            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-            cd "$ANDROID_SDK_ROOT/cmdline-tools"
-            if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
-              # Download command-line tools
-              curl -sS -o cmd.zip \
-                "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" || {
-                echo "curl failed"
-                rm -f cmd.zip || true
-                sleep 5
-                continue
-              }
-              
-              # Extract command-line tools
-              unzip -q cmd.zip -d tmpcmd || {
-                echo "unzip failed"
-                rm -f cmd.zip || true
-                sleep 5
-                continue
-              }
-              
-              rm -f cmd.zip
-              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-              mv tmpcmd/cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/" || true
-              rm -rf tmpcmd || true
-            fi
-            export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-            
-            # Install SDK components
-            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT/cmdline-tools"
+
+          curl --fail --location --retry 3 --retry-all-errors \
+            -o cmd.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+          echo "${CMDLINE_TOOLS_CHECKSUM}  cmd.zip" | sha256sum -c -
+
+          rm -rf latest unpacked
+          mkdir -p unpacked latest
+          unzip -q cmd.zip -d unpacked
+          mv unpacked/cmdline-tools/* latest/
+          rm -rf unpacked cmd.zip
+
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+
+          installed=false
+          for attempt in 1 2 3; do
+            echo "sdkmanager attempt $attempt/3"
+            if sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
               "platform-tools" \
-              "platforms;${{ env.PLATFORM_VERSION }}" \
-              "build-tools;${{ env.BUILD_TOOLS_VERSION }}" && break
-            echo "sdkmanager failed, retrying in 5s..."
+              "platforms;android-${COMPILE_SDK}" \
+              "build-tools;${BUILD_TOOLS_VERSION}" \
+              "ndk;${NDK_VERSION}" \
+              "cmake;${CMAKE_VERSION}"; then
+              installed=true
+              break
+            fi
             sleep 5
           done
 
+          if [ "$installed" != true ]; then
+            echo "Android SDK/NDK/CMake installation failed after 3 attempts" >&2
+            exit 1
+          fi
+
+          {
+            echo "ANDROID_HOME=$ANDROID_SDK_ROOT"
+            echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+            echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
+            echo "$ANDROID_SDK_ROOT/platform-tools"
+          } >> "$GITHUB_ENV"
+
+      - name: Set up canonical Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.rust }}
+          target: aarch64-linux-android
+          cache: true
+
+      - name: Configure Rust Android environment
+        env:
+          RUST_ANDROID_TARGET: aarch64-linux-android
+        run: ./scripts/setup_rust_env.sh
+
       - name: Show environment info
+        shell: bash
         run: |
+          set -euo pipefail
           java -version
-          echo "Android SDK: $ANDROID_SDK_ROOT"
-          "$ANDROID_SDK_ROOT/platform-tools/adb" version || true
+          ./gradlew --version
+          rustc --version
+          cargo --version
+          sdkmanager --version
+          test -d "$ANDROID_SDK_ROOT/ndk/${{ steps.toolchain.outputs.ndk }}"
+          test -d "$ANDROID_SDK_ROOT/cmake/${{ steps.toolchain.outputs.cmake }}"
+          "$ANDROID_SDK_ROOT/platform-tools/adb" version
 
       - name: Fetch assets (retry up to 3 times)
+        shell: bash
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3: fetching assets"
             if ./gradlew --no-daemon :app:fetchAssets; then
-              break
+              exit 0
             fi
             if [ "$attempt" -eq 3 ]; then
-              echo "fetchAssets failed after 3 attempts"
+              echo "fetchAssets failed after 3 attempts" >&2
               exit 1
             fi
-            echo "fetchAssets failed, retrying in 5 seconds..."
             sleep 5
           done
 
@@ -120,11 +181,12 @@ jobs:
           fi
 
       - name: Upload unsigned APK artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: florisboard-arm64-unsigned
-          path: |
-            app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
           retention-days: 30
 
       - name: Upload build logs
@@ -137,30 +199,29 @@ jobs:
             apk_verification.log
             build_report.txt
             build_verification_report.md
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Generate build summary
         if: always()
+        shell: bash
         run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          echo "## Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           if [ -f build_verification_report.md ]; then
-            echo "### Verification Report" >> $GITHUB_STEP_SUMMARY
-            cat build_verification_report.md >> $GITHUB_STEP_SUMMARY
+            echo "### Verification Report" >> "$GITHUB_STEP_SUMMARY"
+            cat build_verification_report.md >> "$GITHUB_STEP_SUMMARY"
           fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### APK Files Generated" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -d app/build/outputs/apk/release ]; then
-            for apk in app/build/outputs/apk/release/*.apk; do
-              if [ -f "$apk" ]; then
-                APK_NAME=$(basename "$apk")
-                APK_SIZE=$(du -h "$apk" | cut -f1)
-                echo "- **$APK_NAME** ($APK_SIZE)" >> $GITHUB_STEP_SUMMARY
-              fi
-            done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### APK Files Generated" >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "No APK files found" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "No APK files found" >> $GITHUB_STEP_SUMMARY
+            for apk in "${apks[@]}"; do
+              APK_NAME="$(basename "$apk")"
+              APK_SIZE="$(du -h "$apk" | cut -f1)"
+              echo "- **$APK_NAME** ($APK_SIZE)" >> "$GITHUB_STEP_SUMMARY"
+            done
           fi
