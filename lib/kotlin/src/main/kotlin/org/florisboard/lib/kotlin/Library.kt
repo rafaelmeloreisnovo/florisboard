@@ -25,7 +25,9 @@ inline fun <R> tryOrNull(block: () -> R): R? {
     }
     return try {
         block()
-    } catch (_: Throwable) {
+    } catch (_: Exception) {
+        // Convert ordinary recoverable failures to absence, but never hide fatal JVM
+        // errors such as OutOfMemoryError, StackOverflowError or linkage failures.
         null
     }
 }
