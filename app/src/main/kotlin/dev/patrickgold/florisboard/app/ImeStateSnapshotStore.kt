@@ -51,29 +51,36 @@ class ImeStateSnapshotStore(context: Context) {
     }
 
     fun restore(nowMs: Long = System.currentTimeMillis()): KeyboardManager.RuntimeStateSnapshot? {
-        val version = prefs.getInt(KEY_VERSION, -1)
-        if (version != SNAPSHOT_VERSION) {
+        return try {
+            val version = prefs.getInt(KEY_VERSION, -1)
+            if (version != SNAPSHOT_VERSION) {
+                clear()
+                return null
+            }
+            val createdAt = prefs.getLong(KEY_CREATED_AT, 0L)
+            if (createdAt <= 0L || nowMs < createdAt || nowMs - createdAt > SNAPSHOT_TTL_MS) {
+                clear()
+                return null
+            }
+            val activeSubtypeId = prefs.getLong(KEY_ACTIVE_SUBTYPE_ID, 0L)
+            if (activeSubtypeId <= 0L) {
+                clear()
+                return null
+            }
+            KeyboardManager.RuntimeStateSnapshot(
+                imeUiMode = prefs.getInt(KEY_IME_UI_MODE, 0),
+                keyboardMode = prefs.getInt(KEY_KEYBOARD_MODE, 0),
+                activeSubtypeId = activeSubtypeId,
+                isActionsOverflowVisible = prefs.getBoolean(KEY_IS_ACTIONS_OVERFLOW_VISIBLE, false),
+                isActionsEditorVisible = prefs.getBoolean(KEY_IS_ACTIONS_EDITOR_VISIBLE, false),
+                isSubtypeSelectionVisible = prefs.getBoolean(KEY_IS_SUBTYPE_SELECTION_VISIBLE, false),
+            )
+        } catch (_: ClassCastException) {
+            // SharedPreferences throws when an old/corrupted key has a different primitive type.
+            // A runtime snapshot is an optimization only, so invalid data must fail closed to defaults.
             clear()
-            return null
+            null
         }
-        val createdAt = prefs.getLong(KEY_CREATED_AT, 0L)
-        if (createdAt <= 0L || nowMs < createdAt || nowMs - createdAt > SNAPSHOT_TTL_MS) {
-            clear()
-            return null
-        }
-        val activeSubtypeId = prefs.getLong(KEY_ACTIVE_SUBTYPE_ID, 0L)
-        if (activeSubtypeId <= 0L) {
-            clear()
-            return null
-        }
-        return KeyboardManager.RuntimeStateSnapshot(
-            imeUiMode = prefs.getInt(KEY_IME_UI_MODE, 0),
-            keyboardMode = prefs.getInt(KEY_KEYBOARD_MODE, 0),
-            activeSubtypeId = activeSubtypeId,
-            isActionsOverflowVisible = prefs.getBoolean(KEY_IS_ACTIONS_OVERFLOW_VISIBLE, false),
-            isActionsEditorVisible = prefs.getBoolean(KEY_IS_ACTIONS_EDITOR_VISIBLE, false),
-            isSubtypeSelectionVisible = prefs.getBoolean(KEY_IS_SUBTYPE_SELECTION_VISIBLE, false),
-        )
     }
 
     fun clear() {
