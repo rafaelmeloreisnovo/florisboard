@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+  ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
 
 jobs:
   build-and-verify:
