@@ -36,10 +36,10 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
 
     // Allow overriding target package and iterations via system properties for flexibility when testing
     private val targetPackage: String
-        get() = System.getProperty("benchmark.targetPackage", "dev.patrickgold.florisboard")
+        get() = System.getProperty("benchmark.targetPackage") ?: "dev.patrickgold.florisboard"
 
     private val imeServiceClass: String
-        get() = System.getProperty("benchmark.imeService", "$targetPackage/.FlorisImeService")
+        get() = System.getProperty("benchmark.imeService") ?: "$targetPackage/.FlorisImeService"
 
     private val iterationsFromProp: Int
         get() = try {
@@ -92,10 +92,10 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
                             attempt++
                             try {
                                 enableImeSafe(service)
-                                val imeList = device.executeShellCommand("ime list -a") ?: ""
+                                val imeList = device.executeShellCommand("ime list -a")
                                 if (imeList.contains(service)) {
                                     device.executeShellCommand("ime set $service")
-                                    val current = device.executeShellCommand("settings get secure default_input_method") ?: ""
+                                    val current = device.executeShellCommand("settings get secure default_input_method")
                                     if (current.contains(service)) {
                                         enabled = true
                                         println("IME '$service' enabled and set successfully on attempt $attempt")
@@ -135,7 +135,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
     private fun androidx.benchmark.macro.MacrobenchmarkScope.isPackageInstalled(pkg: String): Boolean {
         return try {
             val out = device.executeShellCommand("pm list packages $pkg")
-            out?.contains(pkg) ?: false
+            out.contains(pkg)
         } catch (e: Exception) {
             println("isPackageInstalled: failed to query pm: ${e.message}")
             false
@@ -145,7 +145,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
     private fun androidx.benchmark.macro.MacrobenchmarkScope.isImeServiceDeclared(pkg: String, service: String): Boolean {
         return try {
             val out = device.executeShellCommand("dumpsys package $pkg")
-            out != null && (out.contains(service) || out.contains(".FlorisImeService"))
+            out.contains(service) || out.contains(".FlorisImeService")
         } catch (e: Exception) {
             println("isImeServiceDeclared: failed to dumpsys package: ${e.message}")
             false

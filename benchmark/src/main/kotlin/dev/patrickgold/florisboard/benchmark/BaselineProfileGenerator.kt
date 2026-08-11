@@ -31,7 +31,7 @@ class BaselineProfileGenerator {
     // System property override for flexibility in CI/locally:
     // -Dbenchmark.targetPackage=dev.patrickgold.florisboard.debug
     private val targetPackage: String
-        get() = System.getProperty("benchmark.targetPackage", "dev.patrickgold.florisboard")
+        get() = System.getProperty("benchmark.targetPackage") ?: "dev.patrickgold.florisboard"
 
     @Test
     fun startup() =
@@ -43,7 +43,7 @@ class BaselineProfileGenerator {
                 val pkg = targetPackage
                 try {
                     val pm = device.executeShellCommand("pm list packages $pkg")
-                    if (pm?.contains(pkg) != true) {
+                    if (!pm.contains(pkg)) {
                         println("BaselineProfileGenerator: target package '$pkg' not installed on device; skipping startup profile collection.")
                         return@collect
                     }

@@ -26,13 +26,7 @@ kotlin {
         freeCompilerArgs.set(listOf(
             "-opt-in=kotlin.RequiresOptIn",
             "-opt-in=kotlin.contracts.ExperimentalContracts",
-            "-Xjvm-default=all",
-            // Global Kotlin/JVM optimization: disables runtime null-safety assertions
-            // for all build types and Android versions, improving performance but
-            // making NullPointerException debugging harder if they occur.
-            "-Xno-call-assertions",
-            "-Xno-param-assertions",
-            "-Xno-receiver-assertions"
+            "-Xjvm-default=all"
         ))
     }
 }
@@ -63,17 +57,14 @@ android {
         buildConfigField("String", "BUILD_COMMIT_HASH", "\"unknown\"")
         buildConfigField("String", "FLADDONS_API_VERSION", "\"v1\"")
         buildConfigField("String", "FLADDONS_STORE_URL", "\"addons.florisboard.org\"")
-        
-        // Optimize dex compilation for better crash resistance
+
         multiDexEnabled = true
-        
     }
 
     lint {
         checkReleaseBuilds = false
         abortOnError = false
-        // Note: MissingTranslation and ExtraTranslation are disabled to allow partial translations
-        // while maintaining build stability across multiple language packs
+        // Missing/extra translations are intentionally allowed for partial language packs.
         disable += setOf("MissingTranslation", "ExtraTranslation")
         baseline = file("lint-baseline.xml")
     }
@@ -83,34 +74,26 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            
-            // Performance optimizations for release builds
+
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
-            
-            // R8 full mode for maximum optimization
-            // Note: Signing must be configured externally via signing.properties or CI/CD
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             isMinifyEnabled = false
-            
-            // Speed up debug builds
+
+            // Keep full native symbols in debug builds so tombstones can be symbolized.
             ndk {
-                debugSymbolLevel = "NONE"
+                debugSymbolLevel = "FULL"
             }
-            
-            // Enable crash detection in debug
+
             isDebuggable = true
-            
-            // Enable JNI debugging to improve native crash diagnostics during development
             isJniDebuggable = true
         }
     }
 
-    // Garante que o Gradle ache os arquivos de tradução e ícones
     sourceSets {
         getByName("main") {
             assets.srcDirs("src/main/assets")
@@ -122,8 +105,7 @@ android {
         targetCompatibility = javaVersion
         isCoreLibraryDesugaringEnabled = false
     }
-    
-    // Optimize build for better performance and crash resistance
+
     @Suppress("UnstableApiUsage")
     testOptions {
         unitTests {
@@ -136,20 +118,17 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-        // Disable unused features for faster builds
         aidl = false
         renderScript = false
         shaders = false
     }
-    
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // Remove duplicate files to prevent crashes
             pickFirsts += setOf(
                 "META-INF/versions/9/previous-compilation-data.bin"
             )
-            // Merge duplicate resources instead of failing
             merges += setOf(
                 "META-INF/LICENSE",
                 "META-INF/LICENSE.txt",
@@ -158,9 +137,7 @@ android {
             )
         }
         jniLibs {
-            // Reduce APK size and improve loading by keeping only required architectures
             useLegacyPackaging = false
-            // Keep debug symbols for crash analysis in release builds
             keepDebugSymbols += setOf("**/*.so")
         }
     }
@@ -171,15 +148,13 @@ room {
 }
 
 dependencies {
-    // Trazendo as bibliotecas internas do projeto
     implementation(projects.lib.android)
     implementation(projects.lib.color)
     implementation(projects.lib.kotlin)
-    implementation(projects.lib.snygg) 
+    implementation(projects.lib.snygg)
     implementation(projects.lib.compose)
     implementation(projects.lib.native)
 
-    // Dependências externas essenciais
     implementation(libs.androidx.autofill)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
@@ -207,8 +182,7 @@ dependencies {
     implementation(libs.patrickgold.jetpref.datastore.model)
     implementation(libs.mikepenz.aboutlibraries.core)
     implementation(libs.mikepenz.aboutlibraries.compose)
-    
-    // Testes (opcional, mas evita erros se o projeto pedir)
+
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.junit.jupiter.params)
 }

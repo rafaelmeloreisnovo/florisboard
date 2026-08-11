@@ -29,15 +29,17 @@ import dev.patrickgold.florisboard.lib.util.TimeUtils
 import dev.patrickgold.florisboard.lib.util.UnitUtils
 import dev.patrickgold.florisboard.subtypeManager
 import org.florisboard.lib.android.systemService
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("MemberVisibilityCanBePrivate")
 object Devtools {
     private val logcatDumpInProgress = AtomicBoolean(false)
+
+    private const val LOGCAT_TIMEOUT_SECONDS = 2L
+    private const val LOGCAT_READER_JOIN_MILLIS = 500L
+    private const val LOGCAT_DESTROY_GRACE_MILLIS = 250L
 
     fun generateDebugLog(context: Context, prefs: FlorisPreferenceModel? = null, includeLogcat: Boolean = false): String {
         return buildString {
@@ -150,10 +152,13 @@ object Devtools {
                     append("    ").appendLine(subtype.toShortString())
                 }
             }
-
         }
     }
 
+    /**
+     * Returns a bounded logcat snapshot. The reader runs independently so the timeout
+     * covers a blocked pipe read as well as a stalled logcat process.
+     */
     fun generateLogcatDump(withTitle: Boolean = true): String {
         return buildString {
             if (withTitle) appendLine("======= LOGCAT =======")
@@ -161,23 +166,62 @@ object Devtools {
                 appendLine("Skipped: another logcat dump is already in progress.")
                 return@buildString
             }
+
             var process: Process? = null
+            var readerThread: Thread? = null
+            val output = StringBuilder()
+            var readerFailure: IOException? = null
+
             try {
                 process = ProcessBuilder("logcat", "-d", "-t", "1200")
                     .redirectErrorStream(true)
                     .start()
-                val bufferedReader = BufferedReader(InputStreamReader(process.inputStream))
-                var line: String?
-                while (bufferedReader.readLine().also { line = it } != null) {
-                    appendLine(line)
+
+                val runningProcess = process
+                readerThread = Thread({
+                    try {
+                        runningProcess.inputStream.bufferedReader().use { reader ->
+                            reader.forEachLine { line -> output.appendLine(line) }
+                        }
+                    } catch (e: IOException) {
+                        readerFailure = e
+                    }
+                }, "FlorisLogcatDumpReader").apply {
+                    isDaemon = true
+                    start()
                 }
-                if (!process.waitFor(2, TimeUnit.SECONDS)) {
-                    process.destroy()
+
+                val completed = runningProcess.waitFor(LOGCAT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                if (!completed) {
+                    runningProcess.destroy()
+                    if (!runningProcess.waitFor(LOGCAT_DESTROY_GRACE_MILLIS, TimeUnit.MILLISECONDS)) {
+                        runningProcess.destroyForcibly()
+                    }
+                    appendLine("Timed out while retrieving logcat; partial output follows.")
                 }
-            } catch (_: IOException) {
-                appendLine("Failed to retrieve.")
+
+                readerThread.join(LOGCAT_READER_JOIN_MILLIS)
+                if (readerThread.isAlive) {
+                    readerThread.interrupt()
+                    appendLine("Logcat reader did not terminate cleanly; partial output follows.")
+                }
+
+                append(output)
+                readerFailure?.let { failure ->
+                    appendLine("Logcat reader failed: ${failure.message ?: failure.javaClass.simpleName}")
+                }
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                appendLine("Logcat retrieval interrupted.")
+            } catch (e: IOException) {
+                appendLine("Failed to retrieve logcat: ${e.message ?: e.javaClass.simpleName}")
             } finally {
-                process?.destroy()
+                readerThread?.interrupt()
+                process?.let { runningProcess ->
+                    if (runningProcess.isAlive) {
+                        runningProcess.destroyForcibly()
+                    }
+                }
                 logcatDumpInProgress.set(false)
             }
         }
@@ -225,7 +269,6 @@ object Devtools {
     fun getSystemMemoryUsage(context: Context): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val memoryInfo = ActivityManager.MemoryInfo()
                 context.systemService(ActivityManager::class).getMemoryInfo(memoryInfo)
                 val nativeHeapSize = memoryInfo.totalMem
@@ -248,7 +291,6 @@ object Devtools {
     fun getAppJavaHeapMemoryUsage(): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val runtime = Runtime.getRuntime()
                 val javaHeapSize = runtime.maxMemory()
                 val usedMemInBytes = runtime.totalMemory() - runtime.freeMemory()
@@ -269,7 +311,6 @@ object Devtools {
     fun getAppNativeHeapMemoryUsage(): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val nativeHeapSize = Debug.getNativeHeapSize()
                 val nativeHeapFreeSize = Debug.getNativeHeapFreeSize()
                 val usedMemInBytes = nativeHeapSize - nativeHeapFreeSize

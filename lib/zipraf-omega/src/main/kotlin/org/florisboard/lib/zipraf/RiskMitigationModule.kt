@@ -1,38 +1,28 @@
 /*
  * ZIPRAF_OMEGA Risk Mitigation Module v999
  * Copyright (C) 2025 Rafael Melo Reis
- * 
- * This module implements comprehensive risk mitigation strategies for:
- * - Bug detection and prevention
- * - Latency monitoring and optimization
- * - Fragmentation detection and defragmentation
- * - Redundancy elimination
- * - Zombie process detection and cleanup
- * 
+ *
  * License: Apache 2.0
- * Authorship credentials: Rafael Melo Reis
- * 
- * Standards Compliance:
- * - ISO 9001 (Quality Management)
- * - ISO 27001 (Information Security Management)
- * - IEEE 1012 (Software Verification and Validation)
- * - IEEE 1633 (Software Reliability)
- * - NIST 800-53 (Security and Privacy Controls)
  */
 
 package org.florisboard.lib.zipraf
 
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.system.measureTimeMillis
 
-/**
- * Risk types that can be detected and mitigated
- */
 enum class RiskType {
     BUG,
     LATENCY,
@@ -45,20 +35,14 @@ enum class RiskType {
     RESOURCE_LIMIT
 }
 
-/**
- * Risk severity levels
- */
 enum class RiskSeverity {
-    CRITICAL,   // System-breaking, requires immediate action
-    HIGH,       // Significant impact, requires prompt action
-    MEDIUM,     // Moderate impact, should be addressed soon
-    LOW,        // Minor impact, can be addressed later
-    INFO        // Informational, no action required
+    CRITICAL,
+    HIGH,
+    MEDIUM,
+    LOW,
+    INFO
 }
 
-/**
- * Risk detection result
- */
 @Serializable
 data class RiskDetectionResult(
     val riskType: String,
@@ -70,9 +54,6 @@ data class RiskDetectionResult(
     val metrics: Map<String, Double> = emptyMap()
 )
 
-/**
- * Latency measurement result
- */
 data class LatencyMeasurement(
     val operationName: String,
     val durationMs: Long,
@@ -81,9 +62,6 @@ data class LatencyMeasurement(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-/**
- * Memory fragmentation info
- */
 data class FragmentationInfo(
     val totalMemoryBytes: Long,
     val freeMemoryBytes: Long,
@@ -92,9 +70,6 @@ data class FragmentationInfo(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-/**
- * Zombie process detection result
- */
 data class ZombieProcess(
     val processId: String,
     val name: String,
@@ -104,84 +79,63 @@ data class ZombieProcess(
     val isZombie: Boolean
 )
 
-/**
- * Comprehensive Risk Mitigation Module
- * 
- * Provides detection and mitigation for multiple risk categories:
- * - Latency monitoring with thresholds
- * - Memory fragmentation detection
- * - Redundancy identification
- * - Zombie process detection
- * - Bug pattern detection
- * 
- * Implements continuous monitoring with configurable intervals.
- */
 class RiskMitigationModule {
-
-    // Latency tracking
     private val latencyMeasurements = ConcurrentHashMap<String, MutableList<LatencyMeasurement>>()
-    private val latencyThresholds = ConcurrentHashMap<String, Long>()
-    
-    // Process tracking for zombie detection
+
     private val activeProcesses = ConcurrentHashMap<String, ZombieProcess>()
     private val processRegistrationLock = Any()
-    private val zombieDetectionThresholdMs = 300_000L // 5 minutes of inactivity
+    private val zombieDetectionThresholdMs = 300_000L
     private val maxActiveProcesses = 32
     private val processSlots = Semaphore(maxActiveProcesses, true)
     private val taskParallelism = 24
     private val taskDispatcher = Dispatchers.Default.limitedParallelism(taskParallelism)
-    
-    // Metrics
+
     private val bugsDetected = AtomicLong(0)
     private val latencyViolations = AtomicLong(0)
     private val fragmentationEvents = AtomicLong(0)
     private val redundanciesFound = AtomicLong(0)
     private val zombiesDetected = AtomicLong(0)
     private val processLimitBreaches = AtomicLong(0)
-    
-    // State flow for real-time monitoring
+
     private val _riskEvents = MutableSharedFlow<RiskDetectionResult>(replay = 10)
     val riskEvents: SharedFlow<RiskDetectionResult> = _riskEvents.asSharedFlow()
-    
+
     companion object {
+        @Volatile
         private var instance: RiskMitigationModule? = null
-        
+
         fun getInstance(): RiskMitigationModule {
             return instance ?: synchronized(this) {
                 instance ?: RiskMitigationModule().also { instance = it }
             }
         }
     }
-    
-    /**
-     * Measure latency of an operation and check against threshold
-     * 
-     * @param operationName Name of the operation being measured
-     * @param thresholdMs Maximum acceptable duration in milliseconds
-     * @param operation The operation to measure
-     * @return LatencyMeasurement result
-     */
+
     suspend fun <T> measureLatency(
         operationName: String,
         thresholdMs: Long,
         operation: suspend () -> T
     ): Pair<T, LatencyMeasurement> {
+        require(thresholdMs > 0) { "thresholdMs must be > 0" }
+        var completed = false
         var result: T? = null
         val duration = measureTimeMillis {
             result = operation()
+            completed = true
         }
-        
+        check(completed)
+
         val measurement = LatencyMeasurement(
             operationName = operationName,
             durationMs = duration,
             thresholdMs = thresholdMs,
             exceedsThreshold = duration > thresholdMs
         )
-        
-        // Store measurement
-        latencyMeasurements.getOrPut(operationName) { mutableListOf() }.add(measurement)
-        
-        // Emit risk event if threshold exceeded
+
+        latencyMeasurements.compute(operationName) { _, current ->
+            (current ?: mutableListOf()).also { it.add(measurement) }
+        }
+
         if (measurement.exceedsThreshold) {
             latencyViolations.incrementAndGet()
             _riskEvents.emit(
@@ -194,46 +148,37 @@ class RiskMitigationModule {
                     metrics = mapOf(
                         "duration_ms" to duration.toDouble(),
                         "threshold_ms" to thresholdMs.toDouble(),
-                        "ratio" to (duration.toDouble() / thresholdMs)
+                        "ratio" to duration.toDouble() / thresholdMs.toDouble()
                     )
                 )
             )
         }
-        
-        return Pair(result!!, measurement)
+
+        @Suppress("UNCHECKED_CAST")
+        return (result as T) to measurement
     }
-    
-    /**
-     * Check for memory fragmentation
-     * 
-     * @return FragmentationInfo with current fragmentation status
-     */
+
     suspend fun checkFragmentation(): FragmentationInfo {
         val runtime = Runtime.getRuntime()
         val totalMemory = runtime.totalMemory()
         val freeMemory = runtime.freeMemory()
         val maxMemory = runtime.maxMemory()
-        
-        // Calculate fragmentation ratio (simplified)
-        // High fragmentation = low ratio of available contiguous memory
         val usedMemory = totalMemory - freeMemory
         val fragmentationRatio = if (totalMemory > 0) {
             usedMemory.toDouble() / totalMemory.toDouble()
         } else {
             0.0
         }
-        
-        // Consider fragmented if >80% used or complex pattern
-        val isFragmented = fragmentationRatio > 0.80 || 
-                          (totalMemory < maxMemory * 0.5 && freeMemory < totalMemory * 0.2)
-        
+        val isFragmented = fragmentationRatio > 0.80 ||
+            (totalMemory < maxMemory * 0.5 && freeMemory < totalMemory * 0.2)
+
         val info = FragmentationInfo(
             totalMemoryBytes = totalMemory,
             freeMemoryBytes = freeMemory,
             fragmentationRatio = fragmentationRatio,
             isFragmented = isFragmented
         )
-        
+
         if (isFragmented) {
             fragmentationEvents.incrementAndGet()
             _riskEvents.emit(
@@ -242,7 +187,7 @@ class RiskMitigationModule {
                     severity = if (fragmentationRatio > 0.90) RiskSeverity.HIGH.name else RiskSeverity.MEDIUM.name,
                     detected = true,
                     description = "Memory fragmentation detected: ${(fragmentationRatio * 100).toInt()}% used",
-                    mitigation = "Consider triggering garbage collection or memory defragmentation",
+                    mitigation = "Consider triggering garbage collection or reducing memory pressure",
                     metrics = mapOf(
                         "total_bytes" to totalMemory.toDouble(),
                         "free_bytes" to freeMemory.toDouble(),
@@ -251,41 +196,38 @@ class RiskMitigationModule {
                 )
             )
         }
-        
         return info
     }
-    
-    /**
-     * Suggest garbage collection to reduce fragmentation
-     * 
-     * @return true if GC was triggered
-     */
+
     fun triggerGarbageCollection(): Boolean {
         return try {
             System.gc()
             true
-        } catch (e: Exception) {
+        } catch (_: RuntimeException) {
             false
         }
     }
-    
+
     /**
-     * Register a process for zombie detection
-     * 
-     * @param processId Unique identifier for the process
-     * @param processName Human-readable name
+     * Registers exactly one logical process. Duplicate IDs are idempotent and do not
+     * consume another semaphore permit. Capacity checking and insertion share one lock,
+     * so activeProcesses and processSlots cannot diverge due to concurrent registration.
      */
     fun registerProcess(processId: String, processName: String): Boolean {
-        if (activeProcesses.containsKey(processId)) {
-            return true
-        }
-        if (!processSlots.tryAcquire()) {
-        var shouldEmitLimitBreach = false
-        var activeProcessCountAtLimit = 0
+        require(processId.isNotBlank()) { "processId must not be blank" }
+        require(processName.isNotBlank()) { "processName must not be blank" }
+
+        var limitBreached = false
+        var countAtLimit = 0
+
         synchronized(processRegistrationLock) {
-            if (activeProcesses.size >= maxActiveProcesses) {
-                shouldEmitLimitBreach = true
-                activeProcessCountAtLimit = activeProcesses.size
+            if (activeProcesses.containsKey(processId)) {
+                return true
+            }
+
+            if (!processSlots.tryAcquire()) {
+                limitBreached = true
+                countAtLimit = activeProcesses.size
             } else {
                 val now = System.currentTimeMillis()
                 activeProcesses[processId] = ZombieProcess(
@@ -296,9 +238,11 @@ class RiskMitigationModule {
                     idleTimeMs = 0,
                     isZombie = false
                 )
+                return true
             }
         }
-        if (shouldEmitLimitBreach) {
+
+        if (limitBreached) {
             processLimitBreaches.incrementAndGet()
             _riskEvents.tryEmit(
                 RiskDetectionResult(
@@ -309,80 +253,44 @@ class RiskMitigationModule {
                     mitigation = "Reduce concurrent processes or defer task execution",
                     metrics = mapOf(
                         "max_active_processes" to maxActiveProcesses.toDouble(),
-                        "active_processes" to activeProcesses.size.toDouble()
-                        "active_processes" to activeProcessCountAtLimit.toDouble()
+                        "active_processes" to countAtLimit.toDouble()
                     )
                 )
             )
-            return false
         }
-        val now = System.currentTimeMillis()
-        val registered = activeProcesses.putIfAbsent(
-            processId,
-            ZombieProcess(
-                processId = processId,
-                name = processName,
-                createdAt = now,
-                lastActivityAt = now,
-                idleTimeMs = 0,
-                isZombie = false
-            )
-        )
-        if (registered != null) {
-            processSlots.release()
-            return true
-        }
-        return true
+        return false
     }
-    
-    /**
-     * Update process activity timestamp
-     * 
-     * @param processId Process to update
-     */
+
     fun updateProcessActivity(processId: String) {
-        activeProcesses[processId]?.let { process ->
-            activeProcesses[processId] = process.copy(lastActivityAt = System.currentTimeMillis())
+        activeProcesses.computeIfPresent(processId) { _, process ->
+            process.copy(lastActivityAt = System.currentTimeMillis())
         }
     }
-    
-    /**
-     * Unregister a process (normal termination)
-     * 
-     * @param processId Process to remove
-     */
+
     fun unregisterProcess(processId: String) {
-        if (activeProcesses.remove(processId) != null) {
-            processSlots.release()
+        synchronized(processRegistrationLock) {
+            if (activeProcesses.remove(processId) != null) {
+                processSlots.release()
+            }
         }
     }
-    
-    /**
-     * Detect zombie processes (inactive beyond threshold)
-     * 
-     * @return List of detected zombie processes
-     */
+
     suspend fun detectZombieProcesses(): List<ZombieProcess> {
         val now = System.currentTimeMillis()
         val zombies = mutableListOf<ZombieProcess>()
-        
         activeProcesses.forEach { (id, process) ->
             val idleTime = now - process.lastActivityAt
             if (idleTime > zombieDetectionThresholdMs) {
-                val zombie = process.copy(
-                    idleTimeMs = idleTime,
-                    isZombie = true
-                )
+                val zombie = process.copy(idleTimeMs = idleTime, isZombie = true)
                 zombies.add(zombie)
                 zombiesDetected.incrementAndGet()
-                
                 _riskEvents.emit(
                     RiskDetectionResult(
                         riskType = RiskType.ZOMBIE_PROCESS.name,
                         severity = RiskSeverity.MEDIUM.name,
                         detected = true,
                         description = "Zombie process detected: ${process.name} (ID: $id, idle: ${idleTime}ms)",
-                        mitigation = "Terminate the zombie process and investigate root cause",
+                        mitigation = "Unregister the stale logical process and investigate root cause",
                         metrics = mapOf(
                             "idle_time_ms" to idleTime.toDouble(),
                             "threshold_ms" to zombieDetectionThresholdMs.toDouble()
@@ -391,42 +299,29 @@ class RiskMitigationModule {
                 )
             }
         }
-        
         return zombies
     }
-    
-    /**
-     * Cleanup zombie processes
-     * 
-     * @param zombies List of zombies to cleanup
-     * @return Number of processes cleaned up
-     */
+
     fun cleanupZombieProcesses(zombies: List<ZombieProcess>): Int {
         var cleaned = 0
-        zombies.forEach { zombie ->
-            if (activeProcesses.remove(zombie.processId) != null) {
-                cleaned++
+        synchronized(processRegistrationLock) {
+            zombies.forEach { zombie ->
+                if (activeProcesses.remove(zombie.processId) != null) {
+                    processSlots.release()
+                    cleaned++
+                }
             }
         }
         return cleaned
     }
-    
-    /**
-     * Detect redundant data in a collection
-     * 
-     * @param data Collection to check for redundancy
-     * @return List of redundant items
-     */
+
     suspend fun <T> detectRedundancy(data: Collection<T>): List<T> {
         val seen = mutableSetOf<T>()
         val redundant = mutableListOf<T>()
-        
         data.forEach { item ->
-            if (!seen.add(item)) {
-                redundant.add(item)
-            }
+            if (!seen.add(item)) redundant.add(item)
         }
-        
+
         if (redundant.isNotEmpty()) {
             redundanciesFound.addAndGet(redundant.size.toLong())
             _riskEvents.emit(
@@ -439,20 +334,14 @@ class RiskMitigationModule {
                     metrics = mapOf(
                         "total_items" to data.size.toDouble(),
                         "redundant_items" to redundant.size.toDouble(),
-                        "redundancy_ratio" to (redundant.size.toDouble() / data.size)
+                        "redundancy_ratio" to redundant.size.toDouble() / data.size.toDouble()
                     )
                 )
             )
         }
-        
         return redundant
     }
-    
-    /**
-     * Get comprehensive metrics summary
-     * 
-     * @return Map of metric names to values
-     */
+
     fun getMetrics(): Map<String, Long> {
         return mapOf(
             "bugs_detected" to bugsDetected.get(),
@@ -465,51 +354,29 @@ class RiskMitigationModule {
             "latency_measurements" to latencyMeasurements.values.sumOf { it.size }.toLong()
         )
     }
-    
-    /**
-     * Get average latency for an operation
-     * 
-     * @param operationName Name of the operation
-     * @return Average latency in milliseconds, or null if no measurements
-     */
+
     fun getAverageLatency(operationName: String): Double? {
-        val measurements = latencyMeasurements[operationName]
-        return measurements?.let { list ->
-            if (list.isEmpty()) null
-            else list.map { it.durationMs }.average()
+        val measurements = latencyMeasurements[operationName] ?: return null
+        return synchronized(measurements) {
+            if (measurements.isEmpty()) null else measurements.map { it.durationMs }.average()
         }
     }
-    
-    /**
-     * Start continuous monitoring
-     * 
-     * @param scope CoroutineScope for monitoring job
-     * @param intervalMs Monitoring interval in milliseconds
-     * @return Job handle for the monitoring coroutine
-     */
+
     fun startContinuousMonitoring(
         scope: CoroutineScope,
         intervalMs: Long = 60_000L
     ): Job {
+        require(intervalMs > 0) { "intervalMs must be > 0" }
         return scope.launch(taskDispatcher) {
             while (isActive) {
-                // Check fragmentation
                 checkFragmentation()
-                
-                // Detect zombies
                 val zombies = detectZombieProcesses()
-                if (zombies.isNotEmpty()) {
-                    cleanupZombieProcesses(zombies)
-                }
-                
+                if (zombies.isNotEmpty()) cleanupZombieProcesses(zombies)
                 delay(intervalMs)
             }
         }
     }
-    
-    /**
-     * Reset all metrics (for testing)
-     */
+
     fun resetMetrics() {
         bugsDetected.set(0)
         latencyViolations.set(0)
@@ -518,54 +385,19 @@ class RiskMitigationModule {
         zombiesDetected.set(0)
         processLimitBreaches.set(0)
         latencyMeasurements.clear()
-        activeProcesses.clear()
-        val missingPermits = maxActiveProcesses - processSlots.availablePermits()
-        if (missingPermits > 0) {
-            processSlots.release(missingPermits)
+        synchronized(processRegistrationLock) {
+            activeProcesses.clear()
+            processSlots.drainPermits()
+            processSlots.release(maxActiveProcesses)
         }
     }
 
-    /**
-     * Execute a task using the bounded thread pool and registered process tracking.
-     *
-     * @param processId Unique identifier for the process
-     * @param processName Human-readable name
-     * @param task The task to execute
-     * @return Task result or null if execution was rejected due to process limit
-     */
     suspend fun <T> runTaskAsProcess(
         processId: String,
         processName: String,
         task: suspend () -> T
     ): T? {
-        if (!registerProcess(processId, processName)) {
-            return null
-        }
-
-        return try {
-            withContext(taskDispatcher) { task() }
-        } finally {
-            unregisterProcess(processId)
-        }
-    }
-
-    /**
-     * Execute a task using the bounded thread pool and registered process tracking.
-     *
-     * @param processId Unique identifier for the process
-     * @param processName Human-readable name
-     * @param task The task to execute
-     * @return Task result or null if execution was rejected due to process limit
-     */
-    suspend fun <T> runTaskAsProcess(
-        processId: String,
-        processName: String,
-        task: suspend () -> T
-    ): T? {
-        if (!registerProcess(processId, processName)) {
-            return null
-        }
-
+        if (!registerProcess(processId, processName)) return null
         return try {
             withContext(taskDispatcher) { task() }
         } finally {

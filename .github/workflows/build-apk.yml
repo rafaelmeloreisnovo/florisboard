@@ -2,8 +2,13 @@ name: Build APK (unsigned)
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -16,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -24,22 +29,6 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      - name: Fetch assets (retry up to 3 times)
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt/3: fetching assets"
-            if ./gradlew --no-daemon :app:fetchAssets; then
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "fetchAssets failed after 3 attempts"
-              exit 1
-            fi
-            echo "fetchAssets failed, retrying in 5 seconds..."
-            sleep 5
-          done
 
       - name: Assemble Debug (unsigned)
         run: ./gradlew --no-daemon :app:assembleDebug -PuserlandUnsignedApk=true
@@ -61,3 +50,4 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

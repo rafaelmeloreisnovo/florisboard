@@ -39,6 +39,7 @@ import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.crashutility.CrashUtility
+import dev.patrickgold.florisboard.lib.crashutility.HandledFaultRecorder
 import dev.patrickgold.florisboard.lib.devtools.Flog
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogError
@@ -63,10 +64,10 @@ private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 class FlorisApplication : Application() {
     companion object {
         private const val TAG = "FlorisApplication"
-        
+
         @Volatile
         private var nativeLibraryLoaded = false
-        
+
         init {
             try {
                 System.loadLibrary("fl_native")
@@ -81,7 +82,7 @@ class FlorisApplication : Application() {
                 Log.e(TAG, "Unexpected error loading native library: ${e.message}", e)
             }
         }
-        
+
         /**
          * Check if native library was loaded successfully.
          * Use this before calling any native methods to avoid UnsatisfiedLinkError at runtime.
@@ -115,14 +116,14 @@ class FlorisApplication : Application() {
                 flogOutputs = Flog.OUTPUT_CONSOLE,
             )
             CrashUtility.install(this)
-            
+
             // Initialize emoji compatibility with error handling
             try {
                 FlorisEmojiCompat.init(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize emoji compat", e)
             }
-            
+
             // Test native library if loaded
             if (isNativeLibraryLoaded()) {
                 try {
@@ -140,13 +141,13 @@ class FlorisApplication : Application() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to clear cache before user unlock", e)
                 }
-                
+
                 try {
                     extensionManager.value.init()
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to initialize extension manager before user unlock", e)
                 }
-                
+
                 try {
                     ContextCompat.registerReceiver(
                         /* context = */ this,
@@ -163,9 +164,8 @@ class FlorisApplication : Application() {
             init()
         } catch (e: Exception) {
             Log.e(TAG, "Critical error during onCreate", e)
-            CrashUtility.stageException(e)
-            // Continue execution to allow partial functionality
-            // Core components may still initialize successfully in init()
+            HandledFaultRecorder.record(this, "application_on_create", e)
+            return
         }
     }
 
@@ -175,8 +175,9 @@ class FlorisApplication : Application() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear cache during initialization", e)
         }
-        
+
         scope.launch {
+            preferenceStoreLoaded.value = false
             try {
                 val result = FlorisPreferenceStore.initAndroid(
                     context = this@FlorisApplication,
@@ -186,23 +187,24 @@ class FlorisApplication : Application() {
                 preferenceStoreLoaded.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize preference store", e)
-                // Mark as loaded anyway to allow app to continue
-                preferenceStoreLoaded.value = true
+                HandledFaultRecorder.record(this@FlorisApplication, "preference_store_init", e)
+                // Fail closed: consumers must never interpret a failed datastore init as ready.
+                preferenceStoreLoaded.value = false
             }
         }
-        
+
         try {
             extensionManager.value.init()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize extension manager", e)
         }
-        
+
         try {
             clipboardManager.value.initializeForContext(this)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize clipboard manager", e)
         }
-        
+
         try {
             DictionaryManager.init(this)
         } catch (e: Exception) {
@@ -240,8 +242,8 @@ private tailrec fun Context.florisApplication(): FlorisApplication {
             this.baseContext != null -> this.baseContext.florisApplication()
             else -> FlorisApplicationReference.get() ?: throw IllegalStateException("FlorisApplication not initialized")
         }
-        else -> tryOrNull { this.applicationContext as FlorisApplication } 
-            ?: FlorisApplicationReference.get() 
+        else -> tryOrNull { this.applicationContext as FlorisApplication }
+            ?: FlorisApplicationReference.get()
             ?: throw IllegalStateException("FlorisApplication not available")
     }
 }

@@ -21,11 +21,13 @@ import kotlin.contracts.contract
 
 inline fun <R> tryOrNull(block: () -> R): R? {
     contract {
-        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        callsInPlace(block, InvocationKind.AT_MOST_ONCE)
     }
     return try {
         block()
-    } catch (_: Throwable) {
+    } catch (_: Exception) {
+        // Convert ordinary recoverable failures to absence, but never hide fatal JVM
+        // errors such as OutOfMemoryError, StackOverflowError or linkage failures.
         null
     }
 }

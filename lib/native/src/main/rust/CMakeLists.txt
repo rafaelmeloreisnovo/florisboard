@@ -47,10 +47,6 @@ get_filename_component(LLVM_TOOLCHAIN ${CMAKE_C_COMPILER} DIRECTORY)
 
 set(FL_NATIVE_RUST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/target/${RUST_TARGET}/release/libfl_native_rust.a")
 
-add_custom_target(
-    setup_rust_target
-)
-
 execute_process(
     COMMAND ${RUSTUP_EXECUTABLE} target list --installed
     RESULT_VARIABLE RUST_TARGET_LIST_RESULT
@@ -72,10 +68,11 @@ list(FIND RUST_INSTALLED_TARGETS "${RUST_TARGET}" RUST_TARGET_INSTALLED_INDEX)
 
 if(RUST_TARGET_INSTALLED_INDEX EQUAL -1)
     message(STATUS "Rust target ${RUST_TARGET} is not installed. It will be added before building.")
-    add_custom_command(
-        TARGET setup_rust_target
+    add_custom_target(
+        setup_rust_target
         COMMAND ${RUSTUP_EXECUTABLE} target add ${RUST_TARGET}
         COMMENT "Installing Rust target ${RUST_TARGET}"
+        VERBATIM
     )
 else()
     message(STATUS "Rust target ${RUST_TARGET} is already installed. Skipping rustup target add.")
@@ -87,6 +84,7 @@ add_custom_target(
         -C linker="${LLVM_TOOLCHAIN}/${ANDROID_TARGET}${CMAKE_ANDROID_API}-clang"
     BYPRODUCTS ${FL_NATIVE_RUST_PATH}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
 )
 
 if(RUST_TARGET_INSTALLED_INDEX EQUAL -1)

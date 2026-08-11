@@ -36,6 +36,7 @@ import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.devtools.flogInfo
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicReference
 import org.florisboard.lib.kotlin.io.FsDir
 import org.florisboard.lib.kotlin.io.FsFile
 import org.florisboard.lib.kotlin.io.subDir
@@ -62,16 +63,8 @@ abstract class CrashUtility private constructor() {
         private const val UNHANDLED_STACKTRACE_FILE_EXT = "stacktrace"
 
         private var lastActivityCreated: WeakReference<Activity?> = WeakReference(null)
-        private var stagedException: Throwable? = null
+        private val stagedException = AtomicReference<Throwable?>(null)
 
-        /**
-         * Installs the CrashUtility crash handler for the given package [context]. Also registers
-         * a notification channel for devices with Android 8.0+.
-         *
-         * @param context The current package context. If null is supplied, this function does
-         *  nothing.
-         * @return True if the installation was successful, false otherwise.
-         */
         fun install(context: Context?): Boolean {
             if (context == null) {
                 flogError(LogTopic.CRASH_UTILITY) {
@@ -110,10 +103,7 @@ abstract class CrashUtility private constructor() {
                         return false
                     }
                     application.registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
-                        override fun onActivityCreated(
-                            activity: Activity,
-                            savedInstanceState: Bundle?,
-                        ) {
+                        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                             if (activity !is CrashDialogActivity) {
                                 lastActivityCreated = WeakReference(activity)
                             }
@@ -122,15 +112,12 @@ abstract class CrashUtility private constructor() {
                         override fun onActivityResumed(activity: Activity) {}
                         override fun onActivityPaused(activity: Activity) {}
                         override fun onActivityStopped(activity: Activity) {}
-                        override fun onActivitySaveInstanceState(
-                            activity: Activity,
-                            outState: Bundle,
-                        ) {}
+                        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
                         override fun onActivityDestroyed(activity: Activity) {}
                     })
                     try {
                         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
-                        if (notificationManager != null && notificationManager is NotificationManager) {
+                        if (notificationManager is NotificationManager) {
                             val notificationChannel = NotificationChannel(
                                 NOTIFICATION_CHANNEL_ID,
                                 context.resources.getString(R.string.crash_notification_channel__title),
@@ -157,28 +144,19 @@ abstract class CrashUtility private constructor() {
         }
 
         fun stageException(e: Throwable?) {
-            if (stagedException == null) {
-                stagedException = e
+            if (e != null) {
+                stagedException.compareAndSet(null, e)
             }
         }
 
-        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
         fun handleStagedButUnhandledExceptions() {
-            val e = stagedException ?: return
+            val e = stagedException.getAndSet(null) ?: return
             val handler = Thread.getDefaultUncaughtExceptionHandler()
             if (handler is UncaughtExceptionHandler) {
-                stagedException = null
-                handler.uncaughtException(null, e)
+                handler.uncaughtException(Thread.currentThread(), e)
             }
         }
 
-        /**
-         * Reads and returns all unhandled stacktrace files.
-         *
-         * @param context The current package context. If null is supplied, this function returns
-         *  an empty string.
-         * @return All unhandled stacktrace files or an empty list.
-         */
         fun getUnhandledStacktraces(context: Context?): List<Stacktrace> {
             context ?: return listOf()
             val retList = mutableListOf<Stacktrace>()
@@ -208,69 +186,33 @@ abstract class CrashUtility private constructor() {
             }
         }
 
-        /**
-         * Gets the last crash timestamp from the shared preferences.
-         *
-         * @param context The current package context. If null is supplied, this function returns
-         *  the default value for the timestamp (0).
-         * @return The last time crash timestamp or 0.
-         */
         private fun getLastCrashTimestamp(context: Context?): Long {
             context ?: return 0
             return context.getSharedPreferences(SHARED_PREFS_FILE, Context.MODE_PRIVATE)
                 .getLong(SHARED_PREFS_LAST_CRASH_TIMESTAMP, 0)
         }
 
-        /**
-         * Sets the last crash timestamp in the shared preferences.
-         *
-         * @param context The current package context. If null is supplied, this function does
-         *  nothing.
-         * @param value The timestamp of the current crash.
-         */
         @SuppressLint("ApplySharedPref")
         private fun setLastCrashTimestamp(context: Context?, value: Long) {
             context ?: return
-            // Note: must use commit() instead of apply(), as the value must be immediately written
-            //       to be possibly instantly read again.
             context.getSharedPreferences(SHARED_PREFS_FILE, Context.MODE_PRIVATE)
                 .edit()
                 .putLong(SHARED_PREFS_LAST_CRASH_TIMESTAMP, value)
                 .commit()
         }
 
-        /**
-         * Gets a reference to the current unhandled stacktrace directory.
-         *
-         * @return The File object for the directory.
-         */
         private fun Context.getUstDir(): FsDir {
             return this.noBackupFilesDir.subDir(UNHANDLED_STACKTRACES_DIR_NAME).also { it.mkdirs() }
         }
 
-        /**
-         * Gets a reference to the stacktrace file for given [timestamp].
-         *
-         * @param timestamp The timestamp of the stacktrace file to get.
-         * @return The File object for the stacktrace file.
-         */
         private fun Context.getUstFile(timestamp: Long): FsFile {
             return this.getUstDir().subFile("$timestamp.$UNHANDLED_STACKTRACE_FILE_EXT")
         }
 
-        /**
-         * Push a notification which opens [CrashDialogActivity] with given parameters.
-         *
-         * @param context The current package context. If null is supplied, this function does
-         *  nothing.
-         * @param id The ID of the notification.
-         * @param title The title of the notification.
-         * @param body The body of the notification.
-         */
         private fun pushNotification(context: Context?, id: Int, title: String, body: String) {
             context ?: return
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
-            if (notificationManager != null && notificationManager is NotificationManager) {
+            if (notificationManager is NotificationManager) {
                 val notificationBuilder = Notification.Builder(context.applicationContext, NOTIFICATION_CHANNEL_ID)
                 val crashDialogIntent = Intent(context, CrashDialogActivity::class.java)
                 val notification = notificationBuilder.run {
@@ -278,21 +220,13 @@ abstract class CrashUtility private constructor() {
                     style = Notification.BigTextStyle().bigText(body)
                     setContentText(body)
                     setSmallIcon(android.R.drawable.stat_notify_error)
-                    setContentIntent(PendingIntent.getActivity(context, 0, crashDialogIntent, PendingIntent.FLAG_IMMUTABLE)).setAutoCancel(
-                        true
-                    )
+                    setContentIntent(PendingIntent.getActivity(context, 0, crashDialogIntent, PendingIntent.FLAG_IMMUTABLE)).setAutoCancel(true)
                     build()
                 }
                 notificationManager.notify(id, notification)
             }
         }
 
-        /**
-         * Push a notification configured for a single crash.
-         *
-         * @param context The current package context. If null is supplied, this function does
-         *  nothing.
-         */
         private fun pushCrashOnceNotification(context: Context?) {
             context ?: return
             pushNotification(
@@ -303,12 +237,6 @@ abstract class CrashUtility private constructor() {
             )
         }
 
-        /**
-         * Push a notification configured for multiple crashes.
-         *
-         * @param context The current package context. If null is supplied, this function does
-         *  nothing.
-         */
         private fun pushCrashMultipleNotification(context: Context?) {
             context ?: return
             pushNotification(
@@ -319,12 +247,6 @@ abstract class CrashUtility private constructor() {
             )
         }
 
-        /**
-         * Reads a given [file] and returns its content.
-         *
-         * @param file The file object.
-         * @return The contents of the file or an empty string, if the file does not exist.
-         */
         private fun readFile(file: FsFile): String {
             val retText = StringBuilder()
             if (file.exists()) {
@@ -337,14 +259,6 @@ abstract class CrashUtility private constructor() {
             return retText.toString()
         }
 
-        /**
-         * Writes given [text] to given [file]. If the file already exists, its current content
-         * will be overwritten.
-         *
-         * @param file The file object.
-         * @param text The text to write to the file.
-         * @return The contents of the file or an empty string, if the file does not exist.
-         */
         private fun writeToFile(file: FsFile, text: String) {
             try {
                 file.writeText(text)
@@ -354,18 +268,11 @@ abstract class CrashUtility private constructor() {
         }
     }
 
-    /**
-     * A simple stacktrace data class capable of holding a [name] and the [details] of a stacktrace.
-     */
     data class Stacktrace(
         val name: String,
         val details: String,
     )
 
-    /**
-     * Custom UncaughtExceptionHandler, which writes the captured stacktrace of the crash to the
-     * internal storage, pushes a crash notification and kills the current process.
-     */
     class UncaughtExceptionHandler(
         private val application: WeakReference<Application>,
         private val oldHandler: WeakReference<Thread.UncaughtExceptionHandler?>,
@@ -386,7 +293,6 @@ abstract class CrashUtility private constructor() {
                     val lastFile = application.getUstFile(lastTimestamp)
                     val lastStacktrace = readFile(lastFile)
                     if (lastStacktrace == stacktrace) {
-                        // Delete last stacktrace if it matches previous unhandled one
                         lastFile.delete()
                     }
                 }
@@ -400,7 +306,6 @@ abstract class CrashUtility private constructor() {
             }
             val lastActivity = lastActivityCreated.get()
             if (lastActivity != null) {
-                //oldHandler.get()?.uncaughtException(thread, throwable)
                 lastActivity.finish()
                 lastActivityCreated.clear()
             }
