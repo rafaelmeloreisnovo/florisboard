@@ -157,22 +157,6 @@ jobs:
           test -d "$ANDROID_SDK_ROOT/cmake/${{ steps.toolchain.outputs.cmake }}"
           "$ANDROID_SDK_ROOT/platform-tools/adb" version
 
-      - name: Fetch assets (retry up to 3 times)
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt/3: fetching assets"
-            if ./gradlew --no-daemon :app:fetchAssets; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "fetchAssets failed after 3 attempts" >&2
-              exit 1
-            fi
-            sleep 5
-          done
-
       - name: Build and verify ARM64 APK
         run: ./build_and_verify_arm64.sh
 
