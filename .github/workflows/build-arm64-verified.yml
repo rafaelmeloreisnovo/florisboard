@@ -124,9 +124,12 @@ jobs:
           {
             echo "ANDROID_HOME=$ANDROID_SDK_ROOT"
             echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          } >> "$GITHUB_ENV"
+          {
             echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
             echo "$ANDROID_SDK_ROOT/platform-tools"
-          } >> "$GITHUB_ENV"
+            echo "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
+          } >> "$GITHUB_PATH"
 
       - name: Set up canonical Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
