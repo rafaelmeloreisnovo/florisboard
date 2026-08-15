@@ -776,7 +776,7 @@
     <string name="ext__validation__enter_positive_number">Por favor, introduce un número positivo (&gt;=0)</string>
     <string name="ext__validation__enter_percent_size">Por favor, introduce un porcentaje</string>
     <string name="ext__validation__enter_number_between_0_100">Por favor, introduce un número entre 0 y 100</string>
-    <string name="ext__validation__hint_value_above_50_percent">Cualquier valor superior al 50% se comportará como si fuese el 50%, considere la posibilidad de disminuir el porcentaje</string>
+    <string name="ext__validation__hint_value_above_50_percent" formatted="false">Cualquier valor superior al 50% se comportará como si fuese el 50%, considere la posibilidad de disminuir el porcentaje</string>
     <string name="ext__update_box__internet_permission_hint">Ya que esta aplicación no tiene permisos para acceder a Internet, las actualizaciones de las extensiones instaladas deben verificarse manualmente.</string>
     <string name="ext__update_box__search_for_updates">Buscar actualizaciones</string>
     <string name="ext__addon_management_box__managing_placeholder">Gestionando {extensions}</string>
