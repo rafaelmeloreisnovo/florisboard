@@ -1,3 +1,4 @@
 <lint>
     <issue id="ExtraTranslation" severity="warning"/>
+    <issue id="ImpliedQuantity" severity="ignore"/>
 </lint>
