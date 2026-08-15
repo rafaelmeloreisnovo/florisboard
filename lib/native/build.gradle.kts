@@ -60,9 +60,7 @@ android {
         }
 
         ndk {
-            // Restrict to arm64-v8a only; CI/build scripts validate only the Android 15 arm64 artifact and fail otherwise
-            // Requirement: ship an arm64-only release to avoid untested ABIs and shrink the attack surface
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
     }
 
