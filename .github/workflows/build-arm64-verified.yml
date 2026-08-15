@@ -1,4 +1,4 @@
-name: Build and Verify ARM64 APK
+name: Build and Verify Android ARM APK
 
 on:
   push:
@@ -138,13 +138,21 @@ jobs:
           target: aarch64-linux-android
           cache: true
 
-      - name: Verify Rust Android target
+      - name: Install ARMv7 Rust target
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add armv7-linux-androideabi
+
+      - name: Verify Rust Android targets
         shell: bash
         run: |
           set -euo pipefail
           rustc --version
           cargo --version
-          rustup target list --installed | grep -Fx 'aarch64-linux-android'
+          for rust_target in aarch64-linux-android armv7-linux-androideabi; do
+            rustup target list --installed | grep -Fx "$rust_target"
+          done
 
       - name: Show environment info
         shell: bash
@@ -157,7 +165,7 @@ jobs:
           test -d "$ANDROID_SDK_ROOT/cmake/${{ steps.toolchain.outputs.cmake }}"
           "$ANDROID_SDK_ROOT/platform-tools/adb" version
 
-      - name: Build and verify ARM64 APK
+      - name: Build and verify Android ARM APK
         run: ./build_and_verify_arm64.sh
 
       - name: Display build verification report
@@ -223,4 +231,4 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "### Crash decoding artifacts" >> "$GITHUB_STEP_SUMMARY"
           echo "- R8 mapping: app/build/outputs/mapping/release/mapping.txt" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Native symbols: app/build/outputs/native-debug-symbols/** or merged ARM64 .so" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Native symbols: app/build/outputs/native-debug-symbols/** or merged Android ARM .so" >> "$GITHUB_STEP_SUMMARY"
