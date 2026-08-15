@@ -37,6 +37,8 @@ read_toml_version() {
   sed -nE "s/^${key}[[:space:]]*=[[:space:]]*\"([^\"]+)\"/\1/p" gradle/tools.versions.toml | head -n1
 }
 
+EXPECTED_ABIS=(arm64-v8a armeabi-v7a)
+
 VERSION_CODE="$(read_property projectVersionCode)"
 VERSION_NAME="$(read_property projectVersionName)"
 MIN_SDK="$(read_property projectMinSdk)"
@@ -60,10 +62,12 @@ done
 
 [ -x ./gradlew ] || fail "Gradle wrapper is not executable"
 [ -f app/src/main/AndroidManifest.xml ] || fail "AndroidManifest.xml is missing"
-grep -q 'arm64-v8a' app/build.gradle.kts || fail "app build config is not constrained to arm64-v8a"
+for expected_abi in "${EXPECTED_ABIS[@]}"; do
+  grep -Fq "$expected_abi" app/build.gradle.kts || fail "app build config is missing $expected_abi"
+done
 
 log "Canonical config: version=$VERSION_NAME($VERSION_CODE) minSdk=$MIN_SDK targetSdk=$TARGET_SDK compileSdk=$COMPILE_SDK buildTools=$BUILD_TOOLS_VERSION ndk=$NDK_VERSION cmake=$CMAKE_VERSION"
-log "Cleaning and building unsigned ARM64 release APK"
+log "Cleaning and building unsigned Android ARM release APK"
 ./gradlew --no-daemon clean :app:assembleRelease -PuserlandUnsignedApk=true 2>&1 | tee -a "$BUILD_LOG"
 
 [ -d "$APK_OUTPUT_DIR" ] || fail "APK output directory not found: $APK_OUTPUT_DIR"
@@ -72,14 +76,14 @@ apks=("$APK_OUTPUT_DIR"/*.apk)
 [ "${#apks[@]}" -gt 0 ] || fail "no release APK generated"
 
 cat > "$REPORT" <<EOF
-# FlorisBoard ARM64 Build Verification Report
+# FlorisBoard Android ARM Build Verification Report
 
 - **Result:** PENDING
 - **Version:** $VERSION_NAME ($VERSION_CODE)
 - **Min SDK:** $MIN_SDK
 - **Target SDK:** $TARGET_SDK
 - **Compile SDK:** $COMPILE_SDK
-- **Architecture contract:** arm64-v8a only
+- **Architecture contract:** ${EXPECTED_ABIS[*]}
 - **NDK:** $NDK_VERSION
 - **CMake:** $CMAKE_VERSION
 - **Build Tools:** $BUILD_TOOLS_VERSION
@@ -110,9 +114,18 @@ for apk in "${apks[@]}"; do
   [ "$dex_count" -gt 0 ] || fail "$apk_name contains no classes*.dex"
 
   mapfile -t abis < <(printf '%s\n' "${entries[@]}" | awk -F/ '$1 == "lib" && NF >= 3 {print $2}' | sort -u)
-  [ "${#abis[@]}" -eq 1 ] || fail "$apk_name must contain exactly one native ABI; found: ${abis[*]:-none}"
-  [ "${abis[0]}" = 'arm64-v8a' ] || fail "$apk_name contains unexpected ABI: ${abis[0]}"
-  entry_exists 'lib/arm64-v8a/libfl_native.so' || fail "$apk_name is missing lib/arm64-v8a/libfl_native.so"
+  [ "${#abis[@]}" -eq "${#EXPECTED_ABIS[@]}" ] || fail "$apk_name ABI count mismatch; found: ${abis[*]:-none}"
+  for expected_abi in "${EXPECTED_ABIS[@]}"; do
+    entry_exists "lib/${expected_abi}/libfl_native.so" || fail "$apk_name is missing lib/${expected_abi}/libfl_native.so"
+    found_expected_abi=false
+    for abi in "${abis[@]}"; do
+      if [ "$abi" = "$expected_abi" ]; then
+        found_expected_abi=true
+        break
+      fi
+    done
+    [ "$found_expected_abi" = true ] || fail "$apk_name is missing expected ABI: $expected_abi"
+  done
 
   zipalign -c -p 4 "$apk" >/dev/null || fail "$apk_name failed zipalign verification"
 
@@ -132,7 +145,7 @@ for apk in "${apks[@]}"; do
     printf '  sha256=%s\n' "$sha256"
     printf '  bytes=%s\n' "$size_bytes"
     printf '  dex_count=%s\n' "$dex_count"
-    printf '  abi=arm64-v8a\n'
+    printf '  abis=%s\n' "${abis[*]}"
   } >> "$VERIFY_LOG"
 
   cat >> "$REPORT" <<EOF
@@ -141,8 +154,8 @@ for apk in "${apks[@]}"; do
 - SHA-256: \`$sha256\`
 - Bytes: $size_bytes
 - DEX files: $dex_count
-- ABI: \`arm64-v8a\`
-- Native library: \`libfl_native.so\` present
+- ABIs: \`${abis[*]}\`
+- Native library: \`libfl_native.so\` present for each ABI
 - ZIP structure: PASS
 - zipalign: PASS
 - SDK metadata: PASS
@@ -151,5 +164,5 @@ EOF
 done
 
 sed -i 's/\*\*Result:\*\* PENDING/**Result:** PASS/' "$REPORT"
-log "All ARM64 APK verification gates passed"
+log "All Android ARM APK verification gates passed"
 cat "$REPORT"
