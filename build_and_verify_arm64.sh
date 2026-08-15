@@ -87,6 +87,15 @@ cat > "$REPORT" <<EOF
 ## Artifacts
 EOF
 
+entry_exists() {
+  local wanted="$1"
+  local entry
+  for entry in "${entries[@]}"; do
+    [ "$entry" = "$wanted" ] && return 0
+  done
+  return 1
+}
+
 for apk in "${apks[@]}"; do
   apk_name="$(basename "$apk")"
   log "Verifying $apk_name"
@@ -94,8 +103,8 @@ for apk in "${apks[@]}"; do
   unzip -t "$apk" >/dev/null || fail "$apk_name has invalid ZIP structure"
 
   mapfile -t entries < <(unzip -Z1 "$apk")
-  printf '%s\n' "${entries[@]}" | grep -Fxq 'AndroidManifest.xml' || fail "$apk_name has no AndroidManifest.xml"
-  printf '%s\n' "${entries[@]}" | grep -Fxq 'resources.arsc' || fail "$apk_name has no resources.arsc"
+  entry_exists 'AndroidManifest.xml' || fail "$apk_name has no AndroidManifest.xml"
+  entry_exists 'resources.arsc' || fail "$apk_name has no resources.arsc"
 
   dex_count="$(printf '%s\n' "${entries[@]}" | grep -Ec '^classes([0-9]+)?\.dex$' || true)"
   [ "$dex_count" -gt 0 ] || fail "$apk_name contains no classes*.dex"
@@ -103,7 +112,7 @@ for apk in "${apks[@]}"; do
   mapfile -t abis < <(printf '%s\n' "${entries[@]}" | awk -F/ '$1 == "lib" && NF >= 3 {print $2}' | sort -u)
   [ "${#abis[@]}" -eq 1 ] || fail "$apk_name must contain exactly one native ABI; found: ${abis[*]:-none}"
   [ "${abis[0]}" = 'arm64-v8a' ] || fail "$apk_name contains unexpected ABI: ${abis[0]}"
-  printf '%s\n' "${entries[@]}" | grep -Fxq 'lib/arm64-v8a/libfl_native.so' || fail "$apk_name is missing lib/arm64-v8a/libfl_native.so"
+  entry_exists 'lib/arm64-v8a/libfl_native.so' || fail "$apk_name is missing lib/arm64-v8a/libfl_native.so"
 
   zipalign -c -p 4 "$apk" >/dev/null || fail "$apk_name failed zipalign verification"
 
