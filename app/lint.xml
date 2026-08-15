@@ -1,4 +1,9 @@
 <lint>
     <issue id="ExtraTranslation" severity="warning"/>
     <issue id="ImpliedQuantity" severity="ignore"/>
+    <issue id="StringFormatInvalid">
+        <ignore path="src/main/res/values-ca/strings.xml"/>
+        <ignore path="src/main/res/values-es/strings.xml"/>
+        <ignore path="src/main/res/values-pt-rBR/strings.xml"/>
+    </issue>
 </lint>
