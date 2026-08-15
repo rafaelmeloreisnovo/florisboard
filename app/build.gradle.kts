@@ -50,8 +50,7 @@ android {
         }
 
         ndk {
-            // Product requirement: deliver an Android 15 arm64-only build; other ABIs are intentionally omitted
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
 
         buildConfigField("String", "BUILD_COMMIT_HASH", "\"unknown\"")
