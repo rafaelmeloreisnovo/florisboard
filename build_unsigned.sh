@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build FlorisBoard APKs without custom signing (release + beta unsigned)
-# Enhanced for ARM64 architecture with comprehensive validation
+# Enhanced for Android ARM (arm64-v8a + armeabi-v7a) with comprehensive validation
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,21 +16,23 @@ NC='\033[0m' # No Color
 # Build configuration
 BUILD_TYPE="Release"
 APK_OUTPUT_DIR="app/build/outputs/apk/release"
-ARCHITECTURE="arm64-v8a"
+ARCHITECTURES=("arm64-v8a" "armeabi-v7a")
 
 echo -e "${BLUE}================================================${NC}"
-echo -e "${BLUE}FlorisBoard ARM64 Unsigned APK Build System${NC}"
+echo -e "${BLUE}FlorisBoard Android ARM Unsigned APK Build System${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
 
-# Step 1: Verify ARM64 configuration
-echo -e "${YELLOW}[1/6] Verifying ARM64 configuration...${NC}"
-if grep -q "arm64-v8a" app/build.gradle.kts; then
-    echo -e "${GREEN}✓ ARM64 (arm64-v8a) configuration found${NC}"
-else
-    echo -e "${RED}✗ ARM64 configuration not found in app/build.gradle.kts${NC}"
-    exit 1
-fi
+# Step 1: Verify Android ARM configuration
+echo -e "${YELLOW}[1/6] Verifying Android ARM configuration...${NC}"
+for architecture in "${ARCHITECTURES[@]}"; do
+    if grep -Fq "$architecture" app/build.gradle.kts; then
+        echo -e "${GREEN}✓ $architecture configuration found${NC}"
+    else
+        echo -e "${RED}✗ $architecture configuration not found in app/build.gradle.kts${NC}"
+        exit 1
+    fi
+done
 
 # Step 2: Clean previous builds
 echo -e "${YELLOW}[2/6] Cleaning previous builds...${NC}"
@@ -38,7 +40,7 @@ echo -e "${YELLOW}[2/6] Cleaning previous builds...${NC}"
 echo -e "${GREEN}✓ Clean completed${NC}"
 
 # Step 3: Build unsigned release APK
-echo -e "${YELLOW}[3/6] Building unsigned release APK for ARM64...${NC}"
+echo -e "${YELLOW}[3/6] Building unsigned release APK for Android ARM...${NC}"
 ./gradlew :app:assembleRelease --no-daemon -PuserlandUnsignedApk=true
 echo -e "${GREEN}✓ Build completed${NC}"
 
@@ -84,12 +86,15 @@ for apk in "$APK_OUTPUT_DIR"/*.apk; do
             fi
         fi
         
-        # Check for ARM64 native libraries
-        if unzip -l "$apk" 2>/dev/null | grep -q "lib/arm64-v8a/"; then
-            echo -e "  ARM64 libs: ${GREEN}Present${NC}"
-        else
-            echo -e "  ARM64 libs: ${YELLOW}Not found (may be Java-only)${NC}"
-        fi
+        # Check for expected Android ARM native libraries
+        for architecture in "${ARCHITECTURES[@]}"; do
+            if unzip -l "$apk" 2>/dev/null | grep -q "lib/$architecture/"; then
+                echo -e "  $architecture libs: ${GREEN}Present${NC}"
+            else
+                echo -e "  $architecture libs: ${RED}Missing${NC}"
+                exit 1
+            fi
+        done
         
         # Check for META-INF signatures (should be minimal for unsigned)
         SIG_COUNT=$(unzip -l "$apk" 2>/dev/null | grep -c "META-INF/.*\.(RSA\|DSA\|EC)" || true)
@@ -106,11 +111,11 @@ echo ""
 echo -e "${YELLOW}[6/6] Generating build report...${NC}"
 REPORT_FILE="build_report.txt"
 cat > "$REPORT_FILE" << EOF
-FlorisBoard ARM64 Build Report
+FlorisBoard Android ARM Build Report
 ==============================
 Build Date: $(date)
 Build Type: $BUILD_TYPE
-Architecture: $ARCHITECTURE
+Architectures: ${ARCHITECTURES[*]}
 Output Directory: $APK_OUTPUT_DIR
 
 Generated APK(s):
@@ -151,7 +156,7 @@ echo -e "Build report:"
 echo -e "  ${GREEN}$REPORT_FILE${NC}"
 echo ""
 echo -e "${YELLOW}Installation instructions:${NC}"
-echo -e "  1. Transfer APK to your ARM64 Android device"
+echo -e "  1. Transfer APK to an ARMv7 or ARM64 Android device"
 echo -e "  2. Enable 'Install from unknown sources' in device settings"
 echo -e "  3. Install the APK"
 echo ""
