@@ -1,0 +1,31 @@
+name: RMR lowlevel isolated candidate gate
+on:
+  pull_request:
+    paths:
+      - 'rmr_lowlevel/**'
+      - '.github/workflows/rmr-lowlevel-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  c11-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: GCC deterministic host test
+        run: sh rmr_lowlevel/tests/run.sh
+      - name: Clang deterministic host test
+        run: CC=clang sh rmr_lowlevel/tests/run.sh
+      - name: GCC UB and address sanitizer
+        run: |
+          cc -std=c11 -O1 -g -ffreestanding -fno-builtin -fno-omit-frame-pointer \
+            -fsanitize=address,undefined -Wall -Wextra -Werror \
+            -Irmr_lowlevel/include rmr_lowlevel/src/rmr_ime.c \
+            rmr_lowlevel/tests/host_test.c -o /tmp/rmr-ime-sanitized
+          /tmp/rmr-ime-sanitized
+      - name: Compilation-only safety check
+        run: |
+          cc -std=c11 -O2 -ffreestanding -fno-builtin -Wall -Wextra -Werror \
+            -Irmr_lowlevel/include -c rmr_lowlevel/src/rmr_ime.c -o /tmp/rmr-ime.o
+          test -s /tmp/rmr-ime.o
