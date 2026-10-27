@@ -29,3 +29,15 @@ jobs:
           cc -std=c11 -O2 -ffreestanding -fno-builtin -Wall -Wextra -Werror \
             -Irmr_lowlevel/include -c rmr_lowlevel/src/rmr_ime.c -o /tmp/rmr-ime.o
           test -s /tmp/rmr-ime.o
+
+      - name: Negative bounded buffers and host JNI ABI test
+        run: |
+          export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          test -f "$JAVA_HOME/include/jni.h"
+          sh rmr_lowlevel/tests/run_extended.sh
+      - name: Cross compile relocatable ARM objects
+        run: |
+          clang --target=armv7a-linux-gnueabihf -std=c11 -ffreestanding -fno-builtin -Wall -Wextra -Werror -Irmr_lowlevel/include -c rmr_lowlevel/src/rmr_ime.c -o /tmp/rmr-armv7.o
+          clang --target=aarch64-linux-gnu -std=c11 -ffreestanding -fno-builtin -Wall -Wextra -Werror -Irmr_lowlevel/include -c rmr_lowlevel/src/rmr_ime.c -o /tmp/rmr-arm64.o
+          readelf -h /tmp/rmr-armv7.o | grep -q 'Machine:.*ARM'
+          readelf -h /tmp/rmr-arm64.o | grep -q 'Machine:.*AArch64'

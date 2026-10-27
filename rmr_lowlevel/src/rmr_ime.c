@@ -49,7 +49,7 @@ uint32_t rmr_ime_route(rmr_ime_state *s, const rmr_ime_event *e, rmr_ime_decisio
 uint32_t rmr_ime_ascii_probe(const uint8_t *bytes, uint32_t n,
                               uint32_t validated_capabilities, uint32_t *ascii,
                               uint32_t *backend) {
-    if (!ascii || !backend || (n != 0u && !bytes)) return RMR_REJECT;
+    if (!ascii || !backend || n > RMR_PROBE_MAX_BYTES || (n != 0u && !bytes)) return RMR_REJECT;
     *ascii = 1u;
     *backend = RMR_BACKEND_SCALAR;
     uint32_t i = 0u;

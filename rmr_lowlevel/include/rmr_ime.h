@@ -17,6 +17,7 @@
 #define RMR_BACKEND_NEON 2u
 #define RMR_EVENT_BUDGET 4096u
 #define RMR_FAULT_BUDGET 3u
+#define RMR_PROBE_MAX_BYTES 4096u
 
 typedef struct {
     uint32_t abi;
