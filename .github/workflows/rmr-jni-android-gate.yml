@@ -1,0 +1,57 @@
+name: RMR JNI Android bridge evidence
+on:
+  pull_request:
+    paths:
+      - 'rmr_lowlevel/**'
+      - 'app/src/main/cpp/rmr_ime/**'
+      - 'app/src/main/kotlin/dev/patrickgold/florisboard/rmr/**'
+      - 'app/src/androidTest/kotlin/dev/patrickgold/florisboard/rmr/**'
+      - 'app/build.gradle.kts'
+      - '.github/workflows/rmr-jni-android-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-jni-compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install canonical Android Rust targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi
+      - name: Compile app and instrumentation APK, without running device tests
+        run: ./gradlew --no-daemon --stacktrace :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Verify JNI ELF exists for both Android ABIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f | head -n1)"
+          test -n "$APK" && test -s "$APK"
+          for abi in armeabi-v7a arm64-v8a; do
+            entry="lib/$abi/librmr_ime_probe.so"
+            unzip -Z1 "$APK" | grep -Fx "$entry"
+            out="$RUNNER_TEMP/rmr-$abi.so"
+            unzip -p "$APK" "$entry" > "$out"
+            test -s "$out"
+            readelf -h "$out" | grep -q 'DYN (Shared object file)'
+            readelf -W -s "$out" | grep -q 'Java_dev_patrickgold_florisboard_rmr_RmrNativeBridge_nativeSelfTest'
+          done
+          TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' -type f | head -n1)"
+          test -n "$TEST_APK" && test -s "$TEST_APK"
+          echo 'PASS_SCOPED: Android JNI .so packaged both ABIs; instrumentation APK compiled, NOT executed'
+      - name: Upload device-test candidate APKs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmr-jni-device-candidate
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/androidTest/**/*.apk
+          if-no-files-found: error
+          retention-days: 14

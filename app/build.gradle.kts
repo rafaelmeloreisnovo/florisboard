@@ -92,6 +92,14 @@ android {
         }
     }
 
+    // Separate opt-in diagnostic JNI probe. Existing Rust/IME untouched.
+    externalNativeBuild {
+        cmake {
+            version = tools.versions.cmake.get()
+            path("src/main/cpp/rmr_ime/CMakeLists.txt")
+        }
+    }
+
     sourceSets {
         getByName("main") {
             assets.srcDirs("src/main/assets")
@@ -183,4 +191,5 @@ dependencies {
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.junit.jupiter.params)
+    androidTestImplementation(libs.androidx.test.ext)
 }
